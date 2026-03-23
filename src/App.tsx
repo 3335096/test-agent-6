@@ -20,7 +20,19 @@ import {
   Loader2,
   Settings,
   Cpu,
-  Check
+  Check,
+  Database,
+  Plus,
+  Trash2,
+  Edit,
+  ExternalLink,
+  Power,
+  BookOpen,
+  Globe,
+  FileText,
+  Rss,
+  Youtube,
+  Newspaper
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,8 +41,10 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 
 interface Message {
@@ -56,6 +70,18 @@ interface Model {
   provider: string
 }
 
+interface Source {
+  id: number
+  name: string
+  url: string
+  type: string
+  category: string
+  description: string
+  is_active: number
+  tags?: string[]
+  created_at: string
+}
+
 // Иконки агентов
 const AGENT_ICONS: Record<string, React.ReactNode> = {
   'CONTENT_CREATOR': <PenTool className="w-5 h-5" />,
@@ -67,7 +93,6 @@ const AGENT_ICONS: Record<string, React.ReactNode> = {
   'MASTER_AGENT': <Bot className="w-5 h-5" />
 }
 
-// Цвета агентов для фона
 const AGENT_COLORS: Record<string, string> = {
   'CONTENT_CREATOR': 'bg-blue-500',
   'EDITOR': 'bg-purple-500',
@@ -78,7 +103,6 @@ const AGENT_COLORS: Record<string, string> = {
   'MASTER_AGENT': 'bg-indigo-500'
 }
 
-// Градиенты для карточек
 const AGENT_GRADIENTS: Record<string, string> = {
   'CONTENT_CREATOR': 'from-blue-500 to-blue-600',
   'EDITOR': 'from-purple-500 to-purple-600',
@@ -89,72 +113,311 @@ const AGENT_GRADIENTS: Record<string, string> = {
   'MASTER_AGENT': 'from-indigo-500 to-indigo-600'
 }
 
+// Иконки типов источников
+const SOURCE_TYPE_ICONS: Record<string, React.ReactNode> = {
+  'website': <Globe className="w-4 h-4" />,
+  'blog': <FileText className="w-4 h-4" />,
+  'news': <Newspaper className="w-4 h-4" />,
+  'rss': <Rss className="w-4 h-4" />,
+  'youtube': <Youtube className="w-4 h-4" />,
+  'documentation': <BookOpen className="w-4 h-4" />
+}
+
 const agentsList = [
-  {
-    id: 'CONTENT_CREATOR',
-    name: 'Content Creator',
-    role: 'Контент',
-    description: 'Посты, сценарии, рубрики, идеи',
-    icon: <PenTool className="w-4 h-4" />,
-    color: 'bg-blue-500'
-  },
-  {
-    id: 'EDITOR',
-    name: 'Editor',
-    role: 'Редактура',
-    description: 'Вычитка, стиль, финальная подготовка',
-    icon: <Edit3 className="w-4 h-4" />,
-    color: 'bg-purple-500'
-  },
-  {
-    id: 'ANALYST',
-    name: 'Analyst',
-    role: 'Аналитика',
-    description: 'Исследования, метрики, тренды',
-    icon: <Search className="w-4 h-4" />,
-    color: 'bg-green-500'
-  },
-  {
-    id: 'DESIGNER',
-    name: 'Designer',
-    role: 'Дизайн',
-    description: 'Визуалы, инфографика, креативы',
-    icon: <Palette className="w-4 h-4" />,
-    color: 'bg-pink-500'
-  },
-  {
-    id: 'SMM_MANAGER',
-    name: 'SMM Manager',
-    role: 'SMM',
-    description: 'Планирование, модерация, реклама',
-    icon: <Calendar className="w-4 h-4" />,
-    color: 'bg-orange-500'
-  },
-  {
-    id: 'GROWTH_MANAGER',
-    name: 'Growth Manager',
-    role: 'Рост',
-    description: 'Стратегия, лидогенерация, A/B тесты',
-    icon: <TrendingUp className="w-4 h-4" />,
-    color: 'bg-red-500'
-  }
+  { id: 'CONTENT_CREATOR', name: 'Content Creator', role: 'Контент', description: 'Посты, сценарии, рубрики', icon: <PenTool className="w-4 h-4" />, color: 'bg-blue-500' },
+  { id: 'EDITOR', name: 'Editor', role: 'Редактура', description: 'Вычитка, стиль', icon: <Edit3 className="w-4 h-4" />, color: 'bg-purple-500' },
+  { id: 'ANALYST', name: 'Analyst', role: 'Аналитика', description: 'Исследования, метрики', icon: <Search className="w-4 h-4" />, color: 'bg-green-500' },
+  { id: 'DESIGNER', name: 'Designer', role: 'Дизайн', description: 'Визуалы, креативы', icon: <Palette className="w-4 h-4" />, color: 'bg-pink-500' },
+  { id: 'SMM_MANAGER', name: 'SMM Manager', role: 'SMM', description: 'Планирование, реклама', icon: <Calendar className="w-4 h-4" />, color: 'bg-orange-500' },
+  { id: 'GROWTH_MANAGER', name: 'Growth Manager', role: 'Рост', description: 'Стратегия, лиды', icon: <TrendingUp className="w-4 h-4" />, color: 'bg-red-500' }
 ]
 
 const welcomeMessage = `🤖 АГЕНТ: MASTER_AGENT
 
 Привет! Я Мастер-агент для твоего Telegram-канала service.by
 
-Я координирую команду из 6 специализированных агентов:
-• Content Creator — пишет посты и сценарии
-• Editor — вычитывает и редактирует  
-• Analyst — исследует рынок и метрики
-• Designer — создаёт визуалы
-• SMM Manager — планирует публикации и рекламу
-• Growth Manager — отвечает за рост и стратегию
+Я координирую команду из 6 специализированных агентов. При создании контента я использую информацию из настроенных источников.
 
 Просто опиши задачу — я сам определю, кто лучше справится, и верну готовый результат. Начнём?`
 
 const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:3001')
+
+// Компонент для управления источниками
+function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
+  const [sources, setSources] = useState<Source[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [editingSource, setEditingSource] = useState<Source | null>(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    url: '',
+    type: 'website',
+    category: '',
+    description: '',
+    tags: ''
+  })
+
+  const loadSources = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/sources`)
+      if (response.ok) {
+        const data = await response.json()
+        setSources(data.sources || [])
+      }
+    } catch (err) {
+      console.error('Failed to load sources:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadSources()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    const payload = {
+      ...formData,
+      tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean)
+    }
+
+    try {
+      const url = editingSource 
+        ? `${API_URL}/api/sources/${editingSource.id}`
+        : `${API_URL}/api/sources`
+      
+      const response = await fetch(url, {
+        method: editingSource ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (response.ok) {
+        toast.success(editingSource ? 'Источник обновлён' : 'Источник добавлен')
+        setIsDialogOpen(false)
+        setEditingSource(null)
+        setFormData({ name: '', url: '', type: 'website', category: '', description: '', tags: '' })
+        loadSources()
+        onSourcesChange()
+      } else {
+        toast.error('Ошибка при сохранении')
+      }
+    } catch (err) {
+      toast.error('Ошибка сети')
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Удалить этот источник?')) return
+    
+    try {
+      const response = await fetch(`${API_URL}/api/sources/${id}`, { method: 'DELETE' })
+      if (response.ok) {
+        toast.success('Источник удалён')
+        loadSources()
+        onSourcesChange()
+      }
+    } catch (err) {
+      toast.error('Ошибка при удалении')
+    }
+  }
+
+  const handleToggle = async (id: number) => {
+    try {
+      const response = await fetch(`${API_URL}/api/sources/${id}/toggle`, { method: 'PATCH' })
+      if (response.ok) {
+        loadSources()
+        onSourcesChange()
+      }
+    } catch (err) {
+      toast.error('Ошибка')
+    }
+  }
+
+  const openEditDialog = (source: Source) => {
+    setEditingSource(source)
+    setFormData({
+      name: source.name,
+      url: source.url,
+      type: source.type,
+      category: source.category,
+      description: source.description,
+      tags: (source.tags || []).join(', ')
+    })
+    setIsDialogOpen(true)
+  }
+
+  const openAddDialog = () => {
+    setEditingSource(null)
+    setFormData({ name: '', url: '', type: 'website', category: '', description: '', tags: '' })
+    setIsDialogOpen(true)
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Источники информации</h3>
+        <Button onClick={openAddDialog} size="sm">
+          <Plus className="w-4 h-4 mr-1" />
+          Добавить
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-slate-500">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Загрузка...
+        </div>
+      ) : sources.length === 0 ? (
+        <div className="text-center py-8 text-slate-500">
+          <Database className="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <p>Нет источников</p>
+          <p className="text-sm">Добавьте первый источник информации</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {sources.map(source => (
+            <div 
+              key={source.id} 
+              className={`flex items-center gap-3 p-3 rounded-lg border ${source.is_active ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'}`}
+            >
+              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                {SOURCE_TYPE_ICONS[source.type] || <Globe className="w-4 h-4" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm truncate">{source.name}</span>
+                  {source.category && (
+                    <Badge variant="secondary" className="text-xs">{source.category}</Badge>
+                  )}
+                </div>
+                <a 
+                  href={source.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs text-slate-500 hover:text-blue-500 flex items-center gap-1 truncate"
+                >
+                  {source.url}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  onClick={() => handleToggle(source.id)}
+                >
+                  <Power className={`w-4 h-4 ${source.is_active ? 'text-green-500' : 'text-slate-400'}`} />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  onClick={() => openEditDialog(source)}
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-red-500 hover:text-red-600"
+                  onClick={() => handleDelete(source.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingSource ? 'Редактировать источник' : 'Добавить источник'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Название</Label>
+              <Input 
+                id="name" 
+                value={formData.name} 
+                onChange={e => setFormData({...formData, name: e.target.value})}
+                placeholder="Например: Habr"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="url">URL</Label>
+              <Input 
+                id="url" 
+                value={formData.url} 
+                onChange={e => setFormData({...formData, url: e.target.value})}
+                placeholder="https://..."
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="type">Тип</Label>
+              <Select value={formData.type} onValueChange={v => setFormData({...formData, type: v})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="website">Веб-сайт</SelectItem>
+                  <SelectItem value="blog">Блог</SelectItem>
+                  <SelectItem value="news">Новости</SelectItem>
+                  <SelectItem value="rss">RSS</SelectItem>
+                  <SelectItem value="youtube">YouTube</SelectItem>
+                  <SelectItem value="documentation">Документация</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="category">Категория</Label>
+              <Input 
+                id="category" 
+                value={formData.category} 
+                onChange={e => setFormData({...formData, category: e.target.value})}
+                placeholder="Например: Технологии"
+              />
+            </div>
+            <div>
+              <Label htmlFor="description">Описание</Label>
+              <Textarea 
+                id="description" 
+                value={formData.description} 
+                onChange={e => setFormData({...formData, description: e.target.value})}
+                placeholder="Краткое описание источника"
+                rows={2}
+              />
+            </div>
+            <div>
+              <Label htmlFor="tags">Теги (через запятую)</Label>
+              <Input 
+                id="tags" 
+                value={formData.tags} 
+                onChange={e => setFormData({...formData, tags: e.target.value})}
+                placeholder="ремонт, техника, советы"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button type="submit">
+                {editingSource ? 'Сохранить' : 'Добавить'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([
@@ -177,6 +440,7 @@ function App() {
   const [isTyping, setIsTyping] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [apiStatus, setApiStatus] = useState<'checking' | 'connected' | 'error'>('checking')
+  const [sourcesCount, setSourcesCount] = useState(0)
   
   const [models, setModels] = useState<Model[]>([])
   const [currentModel, setCurrentModel] = useState<string>('')
@@ -193,6 +457,7 @@ function App() {
   useEffect(() => {
     checkApiStatus()
     loadModels()
+    loadSourcesCount()
   }, [])
 
   const checkApiStatus = async () => {
@@ -230,6 +495,18 @@ function App() {
     }
   }
 
+  const loadSourcesCount = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/sources`)
+      if (response.ok) {
+        const data = await response.json()
+        setSourcesCount(data.sources?.length || 0)
+      }
+    } catch (err) {
+      console.error('Failed to load sources count:', err)
+    }
+  }
+
   const handleModelChange = async (modelId: string) => {
     try {
       const response = await fetch(`${API_URL}/api/models`, {
@@ -246,7 +523,6 @@ function App() {
         toast.error('Не удалось изменить модель')
       }
     } catch (err) {
-      console.error('Failed to change model:', err)
       toast.error('Ошибка при смене модели')
     }
   }
@@ -289,7 +565,6 @@ function App() {
       const data = await response.json()
       const assistantContent = data.choices?.[0]?.message?.content || 'Извините, не удалось получить ответ'
       
-      // Получаем информацию об агенте из ответа сервера
       const agentInfo = data.agent || {
         key: 'MASTER_AGENT',
         name: 'Master Agent',
@@ -321,7 +596,6 @@ function App() {
   }
 
   const renderMessageContent = (content: string) => {
-    // Убираем тег агента из отображаемого контента
     const cleanContent = content.replace(/🤖\s*АГЕНТ:\s*\w+\n?/i, '').trim()
     
     const parts = cleanContent.split(/(\*\*.*?\*\*|```[\s\S]*?```|`.*?`)/g)
@@ -348,12 +622,6 @@ function App() {
     return model?.name || currentModel.split('/').pop() || 'AI'
   }
 
-  const getCurrentModelProvider = () => {
-    const model = models.find(m => m.id === currentModel)
-    return model?.provider || ''
-  }
-
-  // Компонент карточки агента
   const AgentBadge = ({ agent }: { agent?: AgentInfo }) => {
     if (!agent) return null
     
@@ -442,15 +710,33 @@ function App() {
               </SelectContent>
             </Select>
           )}
-          
-          {currentModel && (
-            <p className="text-xs text-slate-500 mt-2">
-              Текущая: <span className="font-medium text-slate-700">{getCurrentModelName()}</span>
-              {getCurrentModelProvider() && (
-                <span className="text-slate-400"> · {getCurrentModelProvider()}</span>
-              )}
-            </p>
-          )}
+        </div>
+
+        {/* Sources Count */}
+        <div className="p-4 border-b border-slate-100">
+          <div className="flex items-center gap-2 mb-2">
+            <Database className="w-4 h-4 text-slate-400" />
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Источники</p>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">
+              {sourcesCount === 0 ? 'Нет источников' : `${sourcesCount} источник${sourcesCount === 1 ? '' : sourcesCount < 5 ? 'а' : 'ов'}`}
+            </span>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Database className="w-4 h-4 mr-1" />
+                  Управление
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Управление источниками информации</DialogTitle>
+                </DialogHeader>
+                <SourcesManager onSourcesChange={loadSourcesCount} />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Agents List */}
@@ -559,7 +845,6 @@ function App() {
                 </Avatar>
                 <div className={`flex-1 ${message.role === 'user' ? 'text-right' : ''}`}>
                   <div className={`inline-block max-w-[80%] ${message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200'} rounded-2xl px-5 py-3 shadow-sm text-left`}>
-                    {/* Badge агента */}
                     {message.role === 'assistant' && message.agent && (
                       <AgentBadge agent={message.agent} />
                     )}
@@ -618,7 +903,7 @@ function App() {
           </div>
           <div className="flex items-center justify-center gap-4 mt-3">
             <p className="text-xs text-slate-400">
-              Мастер-агент автоматически определит нужного специалиста
+              Мастер-агент использует {sourcesCount} источник{sourcesCount === 1 ? '' : sourcesCount < 5 ? 'а' : 'ов'} для создания контента
             </p>
             {currentModel && (
               <Badge variant="outline" className="text-xs">

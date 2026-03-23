@@ -4,6 +4,9 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
+// Подключаем базу данных
+const db = require('./database/db');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -18,55 +21,55 @@ const AVAILABLE_MODELS = [
   { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3', provider: 'DeepSeek' }
 ];
 
-// Информация об агентах для отображения в UI
+// Информация об агентах
 const AGENTS_INFO = {
   'CONTENT_CREATOR': {
     name: 'Content Creator',
     role: 'Контент',
     description: 'Создание постов, сценариев, рубрик',
-    color: '#3b82f6', // blue
+    color: '#3b82f6',
     icon: 'PenTool'
   },
   'EDITOR': {
     name: 'Editor',
     role: 'Редактура',
     description: 'Вычитка, редактура, стиль',
-    color: '#8b5cf6', // purple
+    color: '#8b5cf6',
     icon: 'Edit3'
   },
   'ANALYST': {
     name: 'Analyst',
     role: 'Аналитика',
     description: 'Исследования, метрики, тренды',
-    color: '#22c55e', // green
+    color: '#22c55e',
     icon: 'Search'
   },
   'DESIGNER': {
     name: 'Designer',
     role: 'Дизайн',
     description: 'Визуалы, инфографика, креативы',
-    color: '#ec4899', // pink
+    color: '#ec4899',
     icon: 'Palette'
   },
   'SMM_MANAGER': {
     name: 'SMM Manager',
     role: 'SMM',
     description: 'Планирование, модерация, реклама',
-    color: '#f97316', // orange
+    color: '#f97316',
     icon: 'Calendar'
   },
   'GROWTH_MANAGER': {
     name: 'Growth Manager',
     role: 'Рост',
     description: 'Стратегия, лидогенерация',
-    color: '#ef4444', // red
+    color: '#ef4444',
     icon: 'TrendingUp'
   },
   'MASTER_AGENT': {
     name: 'Master Agent',
     role: 'Координатор',
     description: 'Координация команды',
-    color: '#6366f1', // indigo
+    color: '#6366f1',
     icon: 'Bot'
   }
 };
@@ -74,13 +77,40 @@ const AGENTS_INFO = {
 app.use(cors());
 app.use(express.json());
 
-const SYSTEM_PROMPT = `╔══════════════════════════════════════════════════════════════╗
+// Функция для получения информации об источниках
+function getSourcesContext() {
+  const activeSources = db.getActiveSources();
+  if (activeSources.length === 0) {
+    return 'Источники не настроены.';
+  }
+  
+  return activeSources.map(s => `- ${s.name} (${s.type}): ${s.url}${s.description ? ' - ' + s.description : ''}`).join('\n');
+}
+
+// Обновлённый системный промпт с источниками
+function getSystemPrompt() {
+  const sourcesContext = getSourcesContext();
+  
+  return `╔══════════════════════════════════════════════════════════════╗
 ║           МАСТЕР-АГЕНТ: КООРДИНАТОР КОНТЕНТ-ТИМЫ            ║
 ║                  Telegram-канал service.by                   ║
 ╚══════════════════════════════════════════════════════════════╝
 
 Ты — Мастер-агент (Project Manager) для профессионального Telegram-канала 
 о ремонте бытовой техники в Беларуси.
+
+═══════════════════════════════════════════════════════════════
+ИСТОЧНИКИ ИНФОРМАЦИИ
+═══════════════════════════════════════════════════════════════
+
+При создании контента используй информацию из этих источников:
+
+${sourcesContext}
+
+ВАЖНО:
+- Если источники указаны — ОБЯЗАТЕЛЬНО используй информацию из них
+- Не выдумывай факты — используй только данные из источников
+- Если нужной информации нет в источниках — скажи об этом
 
 ═══════════════════════════════════════════════════════════════
 СТРУКТУРА КОМАНДЫ
@@ -115,22 +145,11 @@ const SYSTEM_PROMPT = `╔══════════════════
 Пример:
 🤖 АГЕНТ: CONTENT_CREATOR
 
-Затем пиши ответ на задачу.
-
-═══════════════════════════════════════════════════════════════
-ПРИМЕРЫ ЗАДАЧ
-═══════════════════════════════════════════════════════════════
-
-"Напиши пост" → CONTENT_CREATOR
-"Проанализируй конкурентов" → ANALYST
-"Сделай баннер" → DESIGNER
-"Контент-план" → SMM_MANAGER
-"Как набрать подписчиков" → GROWTH_MANAGER
-"Вычитай текст" → EDITOR`;
+Затем пиши ответ на задачу.`;
+}
 
 // Функция для определения агента из ответа
 function detectAgent(content) {
-  // Ищем тег 🤖 АГЕНТ: XXX
   const match = content.match(/🤖\s*АГЕНТ:\s*(\w+)/i);
   if (match) {
     const agentKey = match[1].toUpperCase();
@@ -166,6 +185,7 @@ function detectAgent(content) {
   return { key: 'MASTER_AGENT', ...AGENTS_INFO['MASTER_AGENT'] };
 }
 
+// Chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
     const { messages, model } = req.body;
@@ -185,7 +205,7 @@ app.post('/api/chat', async (req, res) => {
       },
       body: JSON.stringify({
         model: modelToUse,
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
+        messages: [{ role: 'system', content: getSystemPrompt() }, ...messages],
         temperature: 0.7,
         max_tokens: 4000
       })
@@ -198,11 +218,9 @@ app.post('/api/chat', async (req, res) => {
 
     const data = await response.json();
     
-    // Определяем агента из ответа
     const content = data.choices?.[0]?.message?.content || '';
     const agent = detectAgent(content);
     
-    // Добавляем информацию об агенте в ответ
     data.agent = agent;
     
     res.json(data);
@@ -210,6 +228,120 @@ app.post('/api/chat', async (req, res) => {
     res.status(500).json({ error: 'Server error', details: error.message });
   }
 });
+
+// ============ API ИСТОЧНИКОВ ============
+
+// Получить все источники
+app.get('/api/sources', (req, res) => {
+  try {
+    const sources = db.getSourcesWithTags();
+    res.json({ sources });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get sources', details: error.message });
+  }
+});
+
+// Получить активные источники
+app.get('/api/sources/active', (req, res) => {
+  try {
+    const sources = db.getActiveSources();
+    res.json({ sources });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get active sources', details: error.message });
+  }
+});
+
+// Получить один источник
+app.get('/api/sources/:id', (req, res) => {
+  try {
+    const source = db.getSourceById(req.params.id);
+    if (!source) {
+      return res.status(404).json({ error: 'Source not found' });
+    }
+    const tags = db.getSourceTags(req.params.id);
+    res.json({ source: { ...source, tags } });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get source', details: error.message });
+  }
+});
+
+// Создать источник
+app.post('/api/sources', (req, res) => {
+  try {
+    const { name, url, type, category, description, tags, is_active } = req.body;
+    
+    if (!name || !url) {
+      return res.status(400).json({ error: 'Name and URL are required' });
+    }
+    
+    const id = db.createSource({
+      name,
+      url,
+      type: type || 'website',
+      category: category || '',
+      description: description || '',
+      tags: tags || [],
+      is_active: is_active !== undefined ? is_active : true
+    });
+    
+    res.json({ success: true, id, message: 'Source created successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create source', details: error.message });
+  }
+});
+
+// Обновить источник
+app.put('/api/sources/:id', (req, res) => {
+  try {
+    const { name, url, type, category, description, tags, is_active } = req.body;
+    
+    const success = db.updateSource(req.params.id, {
+      name,
+      url,
+      type,
+      category,
+      description,
+      tags,
+      is_active
+    });
+    
+    if (!success) {
+      return res.status(404).json({ error: 'Source not found' });
+    }
+    
+    res.json({ success: true, message: 'Source updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update source', details: error.message });
+  }
+});
+
+// Удалить источник
+app.delete('/api/sources/:id', (req, res) => {
+  try {
+    const success = db.deleteSource(req.params.id);
+    if (!success) {
+      return res.status(404).json({ error: 'Source not found' });
+    }
+    res.json({ success: true, message: 'Source deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete source', details: error.message });
+  }
+});
+
+// Переключить активность источника
+app.patch('/api/sources/:id/toggle', (req, res) => {
+  try {
+    const success = db.toggleSourceActive(req.params.id);
+    if (!success) {
+      return res.status(404).json({ error: 'Source not found' });
+    }
+    res.json({ success: true, message: 'Source toggled successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to toggle source', details: error.message });
+  }
+});
+
+// ============ API МОДЕЛЕЙ ============
 
 app.get('/api/models', (req, res) => {
   res.json({ models: AVAILABLE_MODELS, current: currentModel });
@@ -226,13 +358,30 @@ app.post('/api/models', (req, res) => {
   res.json({ success: true, current: currentModel, model: modelExists });
 });
 
-// Endpoint для получения информации об агентах
+app.get('/api/model/current', (req, res) => {
+  const modelInfo = AVAILABLE_MODELS.find(m => m.id === currentModel);
+  res.json({
+    current: currentModel,
+    model: modelInfo || { id: currentModel, name: currentModel }
+  });
+});
+
+// ============ API АГЕНТОВ ============
+
 app.get('/api/agents', (req, res) => {
   res.json(AGENTS_INFO);
 });
 
+// ============ HEALTH CHECK ============
+
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', openrouter: process.env.OPENROUTER_API_KEY ? 'configured' : 'not_configured', model: currentModel });
+  res.json({ 
+    status: 'ok', 
+    openrouter: process.env.OPENROUTER_API_KEY ? 'configured' : 'not_configured',
+    model: currentModel,
+    sources: db.getAllSources().length,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Static files
@@ -241,7 +390,7 @@ if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get(/.*/, (req, res) => res.sendFile(path.join(distPath, 'index.html')));
 } else {
-  app.get('/', (req, res) => res.json({ status: 'API ready', endpoints: ['/api/health', '/api/chat', '/api/models'] }));
+  app.get('/', (req, res) => res.json({ status: 'API ready', endpoints: ['/api/health', '/api/chat', '/api/sources'] }));
 }
 
 app.listen(PORT, () => {
