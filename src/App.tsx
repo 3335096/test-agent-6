@@ -37,17 +37,17 @@ interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
-  agent?: string
+  agent?: AgentInfo
   timestamp: Date
 }
 
-interface Agent {
-  id: string
+interface AgentInfo {
+  key: string
   name: string
   role: string
   description: string
-  icon: React.ReactNode
   color: string
+  icon: string
 }
 
 interface Model {
@@ -56,9 +56,42 @@ interface Model {
   provider: string
 }
 
-const agents: Agent[] = [
+// Иконки агентов
+const AGENT_ICONS: Record<string, React.ReactNode> = {
+  'CONTENT_CREATOR': <PenTool className="w-5 h-5" />,
+  'EDITOR': <Edit3 className="w-5 h-5" />,
+  'ANALYST': <Search className="w-5 h-5" />,
+  'DESIGNER': <Palette className="w-5 h-5" />,
+  'SMM_MANAGER': <Calendar className="w-5 h-5" />,
+  'GROWTH_MANAGER': <TrendingUp className="w-5 h-5" />,
+  'MASTER_AGENT': <Bot className="w-5 h-5" />
+}
+
+// Цвета агентов для фона
+const AGENT_COLORS: Record<string, string> = {
+  'CONTENT_CREATOR': 'bg-blue-500',
+  'EDITOR': 'bg-purple-500',
+  'ANALYST': 'bg-green-500',
+  'DESIGNER': 'bg-pink-500',
+  'SMM_MANAGER': 'bg-orange-500',
+  'GROWTH_MANAGER': 'bg-red-500',
+  'MASTER_AGENT': 'bg-indigo-500'
+}
+
+// Градиенты для карточек
+const AGENT_GRADIENTS: Record<string, string> = {
+  'CONTENT_CREATOR': 'from-blue-500 to-blue-600',
+  'EDITOR': 'from-purple-500 to-purple-600',
+  'ANALYST': 'from-green-500 to-green-600',
+  'DESIGNER': 'from-pink-500 to-pink-600',
+  'SMM_MANAGER': 'from-orange-500 to-orange-600',
+  'GROWTH_MANAGER': 'from-red-500 to-red-600',
+  'MASTER_AGENT': 'from-indigo-500 to-indigo-600'
+}
+
+const agentsList = [
   {
-    id: 'content',
+    id: 'CONTENT_CREATOR',
     name: 'Content Creator',
     role: 'Контент',
     description: 'Посты, сценарии, рубрики, идеи',
@@ -66,7 +99,7 @@ const agents: Agent[] = [
     color: 'bg-blue-500'
   },
   {
-    id: 'editor',
+    id: 'EDITOR',
     name: 'Editor',
     role: 'Редактура',
     description: 'Вычитка, стиль, финальная подготовка',
@@ -74,7 +107,7 @@ const agents: Agent[] = [
     color: 'bg-purple-500'
   },
   {
-    id: 'analyst',
+    id: 'ANALYST',
     name: 'Analyst',
     role: 'Аналитика',
     description: 'Исследования, метрики, тренды',
@@ -82,7 +115,7 @@ const agents: Agent[] = [
     color: 'bg-green-500'
   },
   {
-    id: 'designer',
+    id: 'DESIGNER',
     name: 'Designer',
     role: 'Дизайн',
     description: 'Визуалы, инфографика, креативы',
@@ -90,7 +123,7 @@ const agents: Agent[] = [
     color: 'bg-pink-500'
   },
   {
-    id: 'smm',
+    id: 'SMM_MANAGER',
     name: 'SMM Manager',
     role: 'SMM',
     description: 'Планирование, модерация, реклама',
@@ -98,7 +131,7 @@ const agents: Agent[] = [
     color: 'bg-orange-500'
   },
   {
-    id: 'growth',
+    id: 'GROWTH_MANAGER',
     name: 'Growth Manager',
     role: 'Рост',
     description: 'Стратегия, лидогенерация, A/B тесты',
@@ -107,7 +140,9 @@ const agents: Agent[] = [
   }
 ]
 
-const welcomeMessage = `Привет! Я Мастер-агент для твоего Telegram-канала service.by
+const welcomeMessage = `🤖 АГЕНТ: MASTER_AGENT
+
+Привет! Я Мастер-агент для твоего Telegram-канала service.by
 
 Я координирую команду из 6 специализированных агентов:
 • Content Creator — пишет посты и сценарии
@@ -119,7 +154,6 @@ const welcomeMessage = `Привет! Я Мастер-агент для твое
 
 Просто опиши задачу — я сам определю, кто лучше справится, и верну готовый результат. Начнём?`
 
-// API URL: используем относительный путь в production, полный URL в development
 const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:3001')
 
 function App() {
@@ -128,6 +162,14 @@ function App() {
       id: 'welcome',
       role: 'assistant',
       content: welcomeMessage,
+      agent: {
+        key: 'MASTER_AGENT',
+        name: 'Master Agent',
+        role: 'Координатор',
+        description: 'Координация команды',
+        color: '#6366f1',
+        icon: 'Bot'
+      },
       timestamp: new Date()
     }
   ])
@@ -136,7 +178,6 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [apiStatus, setApiStatus] = useState<'checking' | 'connected' | 'error'>('checking')
   
-  // Модели LLM
   const [models, setModels] = useState<Model[]>([])
   const [currentModel, setCurrentModel] = useState<string>('')
   const [isLoadingModels, setIsLoadingModels] = useState(true)
@@ -149,7 +190,6 @@ function App() {
     }
   }, [messages])
 
-  // Загрузка моделей и проверка API при старте
   useEffect(() => {
     checkApiStatus()
     loadModels()
@@ -179,7 +219,6 @@ function App() {
       }
     } catch (err) {
       console.error('Failed to load models:', err)
-      // Устанавливаем дефолтные модели если API недоступен
       setModels([
         { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
         { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
@@ -250,27 +289,21 @@ function App() {
       const data = await response.json()
       const assistantContent = data.choices?.[0]?.message?.content || 'Извините, не удалось получить ответ'
       
-      // Detect which agent responded based on content
-      let agentName: string | undefined
-      if (assistantContent.includes('Content Creator') || assistantContent.includes('Контент')) {
-        agentName = 'Content Creator'
-      } else if (assistantContent.includes('Analyst') || assistantContent.includes('Аналитик')) {
-        agentName = 'Analyst'
-      } else if (assistantContent.includes('Designer') || assistantContent.includes('Дизайн')) {
-        agentName = 'Designer'
-      } else if (assistantContent.includes('SMM Manager') || assistantContent.includes('SMM')) {
-        agentName = 'SMM Manager'
-      } else if (assistantContent.includes('Growth Manager') || assistantContent.includes('Growth')) {
-        agentName = 'Growth Manager'
-      } else if (assistantContent.includes('Editor') || assistantContent.includes('Редактор')) {
-        agentName = 'Editor'
+      // Получаем информацию об агенте из ответа сервера
+      const agentInfo = data.agent || {
+        key: 'MASTER_AGENT',
+        name: 'Master Agent',
+        role: 'Координатор',
+        description: 'Координация команды',
+        color: '#6366f1',
+        icon: 'Bot'
       }
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: assistantContent,
-        agent: agentName,
+        agent: agentInfo,
         timestamp: new Date()
       }
 
@@ -288,7 +321,10 @@ function App() {
   }
 
   const renderMessageContent = (content: string) => {
-    const parts = content.split(/(\*\*.*?\*\*|```[\s\S]*?```|`.*?`)/g)
+    // Убираем тег агента из отображаемого контента
+    const cleanContent = content.replace(/🤖\s*АГЕНТ:\s*\w+\n?/i, '').trim()
+    
+    const parts = cleanContent.split(/(\*\*.*?\*\*|```[\s\S]*?```|`.*?`)/g)
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>
@@ -315,6 +351,23 @@ function App() {
   const getCurrentModelProvider = () => {
     const model = models.find(m => m.id === currentModel)
     return model?.provider || ''
+  }
+
+  // Компонент карточки агента
+  const AgentBadge = ({ agent }: { agent?: AgentInfo }) => {
+    if (!agent) return null
+    
+    const gradientClass = AGENT_GRADIENTS[agent.key] || 'from-slate-500 to-slate-600'
+    const icon = AGENT_ICONS[agent.key] || <Bot className="w-4 h-4" />
+    
+    return (
+      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${gradientClass} text-white text-xs font-medium mb-2 shadow-sm`}>
+        {icon}
+        <span>{agent.name}</span>
+        <span className="opacity-75">·</span>
+        <span className="opacity-90">{agent.role}</span>
+      </div>
+    )
   }
 
   return (
@@ -404,7 +457,7 @@ function App() {
         <ScrollArea className="flex-1 p-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Команда агентов</p>
           <div className="space-y-2">
-            {agents.map(agent => (
+            {agentsList.map(agent => (
               <Card key={agent.id} className="cursor-pointer hover:shadow-md transition-shadow border-slate-100">
                 <CardContent className="p-3">
                   <div className="flex items-start gap-3">
@@ -448,7 +501,6 @@ function App() {
               {getCurrentModelName()}
             </Badge>
             
-            {/* Settings Dialog */}
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -477,18 +529,6 @@ function App() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-slate-500 mt-2">
-                      Выберите модель для генерации ответов. Разные модели имеют разные возможности и стоимость.
-                    </p>
-                  </div>
-                  
-                  <div className="pt-4 border-t border-slate-100">
-                    <p className="text-xs text-slate-500">
-                      <strong>API URL:</strong> {API_URL || window.location.origin}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      <strong>Статус:</strong> {apiStatus === 'connected' ? 'Подключено' : 'Офлайн'}
-                    </p>
                   </div>
                 </div>
               </DialogContent>
@@ -512,18 +552,16 @@ function App() {
                 key={message.id}
                 className={`flex gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
               >
-                <Avatar className={`w-10 h-10 flex-shrink-0 ${message.role === 'assistant' ? 'bg-gradient-to-br from-blue-600 to-purple-600' : 'bg-slate-200'}`}>
+                <Avatar className={`w-10 h-10 flex-shrink-0 ${message.role === 'assistant' && message.agent ? AGENT_COLORS[message.agent.key] || 'bg-gradient-to-br from-blue-600 to-purple-600' : message.role === 'assistant' ? 'bg-gradient-to-br from-blue-600 to-purple-600' : 'bg-slate-200'}`}>
                   <AvatarFallback className="text-white">
-                    {message.role === 'assistant' ? <Bot className="w-5 h-5" /> : <User className="w-5 h-5 text-slate-600" />}
+                    {message.role === 'assistant' ? (message.agent ? AGENT_ICONS[message.agent.key] : <Bot className="w-5 h-5" />) : <User className="w-5 h-5 text-slate-600" />}
                   </AvatarFallback>
                 </Avatar>
                 <div className={`flex-1 ${message.role === 'user' ? 'text-right' : ''}`}>
                   <div className={`inline-block max-w-[80%] ${message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200'} rounded-2xl px-5 py-3 shadow-sm text-left`}>
-                    {message.agent && (
-                      <Badge className="mb-2 bg-amber-100 text-amber-700 hover:bg-amber-100">
-                        <Sparkles className="w-3 h-3 mr-1" />
-                        {message.agent}
-                      </Badge>
+                    {/* Badge агента */}
+                    {message.role === 'assistant' && message.agent && (
+                      <AgentBadge agent={message.agent} />
                     )}
                     <div className={`text-sm whitespace-pre-line ${message.role === 'user' ? 'text-white' : 'text-slate-700'}`}>
                       {renderMessageContent(message.content)}
