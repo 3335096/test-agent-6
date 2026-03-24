@@ -51,7 +51,135 @@ function initDatabase() {
     )
   `);
 
+  // Таблица настроек агентов
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS agent_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      agent_key TEXT NOT NULL UNIQUE,
+      custom_prompt TEXT DEFAULT '',
+      clarifications TEXT DEFAULT '',
+      goals TEXT DEFAULT '',
+      constraints TEXT DEFAULT '',
+      is_active INTEGER DEFAULT 1,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Таблица истории чата
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS chat_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      agent_key TEXT,
+      agent_json TEXT,
+      routing_json TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('Database initialized at:', dbPath);
+}
+
+// Настройки агентов
+function getAllAgentSettings() {
+  const rows = db.prepare('SELECT * FROM agent_settings ORDER BY agent_key ASC').all();
+  return rows.map(row => ({
+    ...row,
+    is_active: row.is_active === 1
+  }));
+}
+
+function getAgentSetting(agentKey) {
+  const row = db.prepare('SELECT * FROM agent_settings WHERE agent_key = ?').get(agentKey);
+  if (!row) return null;
+  return {
+    ...row,
+    is_active: row.is_active === 1
+  };
+}
+
+function upsertAgentSetting(agentKey, payload = {}) {
+  const existing = getAgentSetting(agentKey);
+  const merged = {
+    custom_prompt: payload.custom_prompt ?? existing?.custom_prompt ?? '',
+    clarifications: payload.clarifications ?? existing?.clarifications ?? '',
+    goals: payload.goals ?? existing?.goals ?? '',
+    constraints: payload.constraints ?? existing?.constraints ?? '',
+    is_active: payload.is_active ?? existing?.is_active ?? true
+  };
+
+  if (existing) {
+    const stmt = db.prepare(`
+      UPDATE agent_settings
+      SET custom_prompt = ?, clarifications = ?, goals = ?, constraints = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE agent_key = ?
+    `);
+    stmt.run(
+      merged.custom_prompt,
+      merged.clarifications,
+      merged.goals,
+      merged.constraints,
+      merged.is_active ? 1 : 0,
+      agentKey
+    );
+  } else {
+    const stmt = db.prepare(`
+      INSERT INTO agent_settings (agent_key, custom_prompt, clarifications, goals, constraints, is_active)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run(
+      agentKey,
+      merged.custom_prompt,
+      merged.clarifications,
+      merged.goals,
+      merged.constraints,
+      merged.is_active ? 1 : 0
+    );
+  }
+
+  return getAgentSetting(agentKey);
+}
+
+// История чата
+function addChatMessage(message) {
+  const stmt = db.prepare(`
+    INSERT INTO chat_history (role, content, agent_key, agent_json, routing_json, created_at)
+    VALUES (?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))
+  `);
+
+  const createdAt = message.created_at || message.createdAt || null;
+  return stmt.run(
+    message.role,
+    message.content,
+    message.agent_key || message.agent?.key || null,
+    message.agent ? JSON.stringify(message.agent) : null,
+    message.routing ? JSON.stringify(message.routing) : null,
+    createdAt
+  ).lastInsertRowid;
+}
+
+function getChatHistory(limit = 200) {
+  const rows = db.prepare(`
+    SELECT * FROM chat_history
+    ORDER BY id DESC
+    LIMIT ?
+  `).all(limit);
+
+  return rows.reverse().map(row => ({
+    id: String(row.id),
+    role: row.role,
+    content: row.content,
+    agent_key: row.agent_key,
+    agent: row.agent_json ? JSON.parse(row.agent_json) : null,
+    routing: row.routing_json ? JSON.parse(row.routing_json) : null,
+    created_at: row.created_at
+  }));
+}
+
+function clearChatHistory() {
+  const result = db.prepare('DELETE FROM chat_history').run();
+  return result.changes;
 }
 
 // Источники
@@ -204,5 +332,11 @@ module.exports = {
   addSourceContent,
   getSourceContent,
   getRecentContent,
-  searchContent
+  searchContent,
+  getAllAgentSettings,
+  getAgentSetting,
+  upsertAgentSetting,
+  addChatMessage,
+  getChatHistory,
+  clearChatHistory
 };

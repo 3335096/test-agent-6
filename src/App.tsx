@@ -28,7 +28,8 @@ import {
   FileText,
   Rss,
   Youtube,
-  Newspaper
+  Newspaper,
+  Wrench
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -75,6 +76,16 @@ interface Model {
   provider: string
 }
 
+interface AgentSetting {
+  agent_key: string
+  custom_prompt: string
+  clarifications: string
+  goals: string
+  constraints: string
+  is_active: boolean
+  updated_at?: string
+}
+
 interface Source {
   id: number
   name: string
@@ -91,21 +102,21 @@ interface Source {
 const AGENT_ICONS: Record<string, React.ReactNode> = {
   'CONTENT_CREATOR': <PenTool className="w-5 h-5" />,
   'EDITOR': <Edit3 className="w-5 h-5" />,
-  'SM_MANAGER': <Calendar className="w-5 h-5" />,
+  'SMM_MANAGER': <Calendar className="w-5 h-5" />,
   'MASTER_AGENT': <Bot className="w-5 h-5" />
 }
 
 const AGENT_COLORS: Record<string, string> = {
   'CONTENT_CREATOR': 'bg-blue-500',
   'EDITOR': 'bg-purple-500',
-  'SM_MANAGER': 'bg-orange-500',
+  'SMM_MANAGER': 'bg-orange-500',
   'MASTER_AGENT': 'bg-indigo-500'
 }
 
 const AGENT_GRADIENTS: Record<string, string> = {
   'CONTENT_CREATOR': 'from-blue-500 to-blue-600',
   'EDITOR': 'from-purple-500 to-purple-600',
-  'SM_MANAGER': 'from-orange-500 to-orange-600',
+  'SMM_MANAGER': 'from-orange-500 to-orange-600',
   'MASTER_AGENT': 'from-indigo-500 to-indigo-600'
 }
 
@@ -123,7 +134,7 @@ const welcomeMessage = `🤖 АГЕНТ: MASTER_AGENT
 
 Привет! Я Мастер-агент для твоего Telegram-канала service.by
 
-Я координирую команду из 3 специализированных агентов: Content Agent, Editor Agent и SM Agent.
+Я координирую команду из 3 специализированных агентов: Content Agent, Editor Agent и SMM Agent.
 
 При создании контента я использую информацию из настроенных источников.
 
@@ -409,6 +420,7 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
 }
 
 function App() {
+  const STORAGE_KEY = 'serviceby-chat-history-v1'
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -434,6 +446,16 @@ function App() {
   const [models, setModels] = useState<Model[]>([])
   const [currentModel, setCurrentModel] = useState<string>('')
   const [isLoadingModels, setIsLoadingModels] = useState(true)
+  const [agentSettings, setAgentSettings] = useState<Record<string, AgentSetting>>({})
+  const [activeSettingsAgent, setActiveSettingsAgent] = useState<string | null>(null)
+  const [agentForm, setAgentForm] = useState({
+    custom_prompt: '',
+    clarifications: '',
+    goals: '',
+    constraints: '',
+    is_active: true
+  })
+  const [isSavingAgent, setIsSavingAgent] = useState(false)
   
   const scrollRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -447,7 +469,17 @@ function App() {
     checkApiStatus()
     loadModels()
     loadSourcesCount()
+    loadAgentSettings()
+    loadHistory()
   }, [])
+
+  useEffect(() => {
+    const serializable = messages.filter(m => m.id !== 'welcome').map(message => ({
+      ...message,
+      timestamp: message.timestamp.toISOString()
+    }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable))
+  }, [messages])
 
   const checkApiStatus = async () => {
     try {
@@ -493,6 +525,60 @@ function App() {
       }
     } catch (err) {
       console.error('Failed to load sources count:', err)
+    }
+  }
+
+  const loadHistory = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/chat/history?limit=100`)
+      if (response.ok) {
+        const data = await response.json()
+        const history = (data.messages || []).map((item: any) => ({
+          id: item.id?.toString() || `${Date.now()}-${Math.random()}`,
+          role: item.role,
+          content: item.content,
+          agent: item.agent || undefined,
+          routing: item.routing || undefined,
+          timestamp: new Date(item.created_at || new Date())
+        })) as Message[]
+
+        if (history.length > 0) {
+          setMessages(prev => [prev[0], ...history])
+          return
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load history from API:', err)
+    }
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (!saved) return
+      const parsed = JSON.parse(saved)
+      if (!Array.isArray(parsed) || parsed.length === 0) return
+      const restored = parsed.map((m: any) => ({
+        ...m,
+        timestamp: new Date(m.timestamp)
+      }))
+      setMessages(prev => [prev[0], ...restored])
+    } catch (err) {
+      console.error('Failed to restore local history:', err)
+    }
+  }
+
+  const loadAgentSettings = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/agents/settings`)
+      if (!response.ok) return
+      const data = await response.json()
+      const entries = data.settings || []
+      const map: Record<string, AgentSetting> = {}
+      entries.forEach((item: AgentSetting) => {
+        map[item.agent_key] = item
+      })
+      setAgentSettings(map)
+    } catch (err) {
+      console.error('Failed to load agent settings:', err)
     }
   }
 
@@ -573,6 +659,8 @@ function App() {
       }
 
       setMessages(prev => [...prev, assistantMessage])
+
+      // История сохраняется на сервере через /api/chat в бэкенде
     } catch (err: any) {
       setError(err.message || 'Произошла ошибка при отправке сообщения')
       console.error('Chat error:', err)
@@ -580,6 +668,50 @@ function App() {
       setIsTyping(false)
     }
   }
+
+  const openAgentSettings = (agentKey: string) => {
+    const current = agentSettings[agentKey]
+    setActiveSettingsAgent(agentKey)
+    setAgentForm({
+      custom_prompt: current?.custom_prompt || '',
+      clarifications: current?.clarifications || '',
+      goals: current?.goals || '',
+      constraints: current?.constraints || '',
+      is_active: current?.is_active ?? true
+    })
+  }
+
+  const saveAgentSettings = async () => {
+    if (!activeSettingsAgent) return
+    try {
+      setIsSavingAgent(true)
+      const response = await fetch(`${API_URL}/api/agents/settings/${activeSettingsAgent}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(agentForm)
+      })
+      if (!response.ok) {
+        toast.error('Не удалось сохранить настройки агента')
+        return
+      }
+      const data = await response.json()
+      setAgentSettings(prev => ({ ...prev, [activeSettingsAgent]: data.setting }))
+      toast.success('Настройки агента сохранены')
+      setActiveSettingsAgent(null)
+    } catch (err) {
+      toast.error('Ошибка сети при сохранении настроек агента')
+    } finally {
+      setIsSavingAgent(false)
+    }
+  }
+
+  const getAgentMessagesCount = (agentKey: string) => messages.filter(m => m.role === 'assistant' && m.agent?.key === agentKey).length
+
+  const sidebarAgents = [
+    { key: 'CONTENT_CREATOR', label: 'Content Agent', actions: 'Посты, рубрики, сценарии' },
+    { key: 'EDITOR', label: 'Editor Agent', actions: 'Вычитка, стиль, улучшения' },
+    { key: 'SMM_MANAGER', label: 'SMM Manager', actions: 'Контент-план, публикации, модерация' }
+  ]
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
@@ -765,8 +897,52 @@ function App() {
           </div>
         </div>
 
+        {/* Agents panel */}
+        <div className="p-4 border-b border-slate-100 space-y-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Wrench className="w-4 h-4 text-slate-400" />
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Агенты и настройки</p>
+          </div>
+          {sidebarAgents.map(agent => {
+            const settings = agentSettings[agent.key]
+            const requestsHandled = getAgentMessagesCount(agent.key)
+            return (
+              <div key={agent.key} className="rounded-lg border border-slate-200 p-3 bg-slate-50/70">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-7 h-7 rounded-md flex items-center justify-center text-white ${AGENT_COLORS[agent.key] || 'bg-slate-500'}`}>
+                      {AGENT_ICONS[agent.key]}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{agent.label}</p>
+                      <p className="text-[11px] text-slate-500">{agent.actions}</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className={settings?.is_active === false ? 'text-red-600 border-red-200' : 'text-green-600 border-green-200'}>
+                    {settings?.is_active === false ? 'off' : 'on'}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 mb-2">
+                  <div className="rounded bg-white border border-slate-200 px-2 py-1">
+                    <span className="block text-slate-400">Ответов</span>
+                    <span className="font-semibold text-slate-800">{requestsHandled}</span>
+                  </div>
+                  <div className="rounded bg-white border border-slate-200 px-2 py-1">
+                    <span className="block text-slate-400">Промпт</span>
+                    <span className="font-semibold text-slate-800">{(settings?.custom_prompt || '').trim() ? 'кастом' : 'базовый'}</span>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="w-full" onClick={() => openAgentSettings(agent.key)}>
+                  <Settings className="w-3.5 h-3.5 mr-1" />
+                  Настроить агента
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+
         {/* Footer */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50">
+        <div className="p-4 border-t border-slate-100 bg-slate-50 mt-auto">
           <p className="text-xs text-slate-500 text-center">
             Telegram-канал о ремонте бытовой техники в Беларуси
           </p>
@@ -917,6 +1093,25 @@ function App() {
             <p className="text-xs text-slate-400">
               Мастер-агент использует {sourcesCount} источник{sourcesCount === 1 ? '' : sourcesCount < 5 ? 'а' : 'ов'} для создания контента
             </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700"
+              onClick={async () => {
+                if (!confirm('Очистить историю чата?')) return
+                try {
+                  await fetch(`${API_URL}/api/chat/history`, { method: 'DELETE' })
+                } catch {
+                  // ignore network errors; still clear local state
+                }
+                localStorage.removeItem(STORAGE_KEY)
+                setMessages(prev => [prev[0]])
+                toast.success('История очищена')
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1" />
+              Очистить историю
+            </Button>
             {currentModel && (
               <Badge variant="outline" className="text-xs">
                 <Cpu className="w-3 h-3 mr-1" />
@@ -926,6 +1121,80 @@ function App() {
           </div>
         </div>
       </div>
+
+      <Dialog open={Boolean(activeSettingsAgent)} onOpenChange={(open) => !open && setActiveSettingsAgent(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Настройки агента {activeSettingsAgent || ''}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50">
+              <div>
+                <p className="text-sm font-medium text-slate-800">Статус агента</p>
+                <p className="text-xs text-slate-500">Отключенный агент не будет выбран Мастер-агентом</p>
+              </div>
+              <Button
+                variant={agentForm.is_active ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setAgentForm(prev => ({ ...prev, is_active: !prev.is_active }))}
+              >
+                {agentForm.is_active ? 'Включен' : 'Выключен'}
+              </Button>
+            </div>
+
+            <div>
+              <Label>Кастомный промпт</Label>
+              <Textarea
+                rows={4}
+                placeholder="Например: всегда предлагай 3 варианта заголовка..."
+                value={agentForm.custom_prompt}
+                onChange={e => setAgentForm(prev => ({ ...prev, custom_prompt: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <Label>Уточнения</Label>
+              <Textarea
+                rows={3}
+                placeholder="Тон, формат, стиль, требования к структуре..."
+                value={agentForm.clarifications}
+                onChange={e => setAgentForm(prev => ({ ...prev, clarifications: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <Label>Цели</Label>
+              <Textarea
+                rows={3}
+                placeholder="Что агент должен достигать в каждом ответе..."
+                value={agentForm.goals}
+                onChange={e => setAgentForm(prev => ({ ...prev, goals: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <Label>Ограничения</Label>
+              <Textarea
+                rows={3}
+                placeholder="Что нельзя делать, какие рамки соблюдать..."
+                value={agentForm.constraints}
+                onChange={e => setAgentForm(prev => ({ ...prev, constraints: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActiveSettingsAgent(null)}>
+              Отмена
+            </Button>
+            <Button onClick={saveAgentSettings} disabled={isSavingAgent}>
+              {isSavingAgent ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Сохранить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
