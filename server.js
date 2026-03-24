@@ -21,56 +21,61 @@ const AVAILABLE_MODELS = [
   { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3', provider: 'DeepSeek' }
 ];
 
-// Информация об агентах
+// Информация об агентах (мастер + 3 специализированных)
 const AGENTS_INFO = {
   'CONTENT_CREATOR': {
-    name: 'Content Creator',
+    name: 'Content Agent',
     role: 'Контент',
     description: 'Создание постов, сценариев, рубрик',
     color: '#3b82f6',
     icon: 'PenTool'
   },
   'EDITOR': {
-    name: 'Editor',
+    name: 'Editor Agent',
     role: 'Редактура',
     description: 'Вычитка, редактура, стиль',
     color: '#8b5cf6',
     icon: 'Edit3'
   },
-  'ANALYST': {
-    name: 'Analyst',
-    role: 'Аналитика',
-    description: 'Исследования, метрики, тренды',
-    color: '#22c55e',
-    icon: 'Search'
-  },
-  'DESIGNER': {
-    name: 'Designer',
-    role: 'Дизайн',
-    description: 'Визуалы, инфографика, креативы',
-    color: '#ec4899',
-    icon: 'Palette'
-  },
-  'SMM_MANAGER': {
-    name: 'SMM Manager',
-    role: 'SMM',
-    description: 'Планирование, модерация, реклама',
+  'SM_MANAGER': {
+    name: 'SM Agent',
+    role: 'Social Media',
+    description: 'Публикации, контент-план, модерация',
     color: '#f97316',
     icon: 'Calendar'
-  },
-  'GROWTH_MANAGER': {
-    name: 'Growth Manager',
-    role: 'Рост',
-    description: 'Стратегия, лидогенерация',
-    color: '#ef4444',
-    icon: 'TrendingUp'
   },
   'MASTER_AGENT': {
     name: 'Master Agent',
     role: 'Координатор',
-    description: 'Координация команды',
+    description: 'Распределяет задачи между агентами',
     color: '#6366f1',
     icon: 'Bot'
+  }
+};
+
+const AGENT_ALIASES = {
+  SMM_MANAGER: 'SM_MANAGER',
+  SM_AGENT: 'SM_MANAGER',
+  SOCIAL_MEDIA_MANAGER: 'SM_MANAGER',
+  CONTENT: 'CONTENT_CREATOR'
+};
+
+const ROUTING_RULES = {
+  CONTENT_CREATOR: {
+    signals: ['пост', 'контент', 'текст', 'сценар', 'рубрик', 'идея', 'заголовок', 'описани'],
+    reason: 'Задача связана с созданием контента и подготовкой материалов.'
+  },
+  EDITOR: {
+    signals: ['редакт', 'вычит', 'исправ', 'граммат', 'стиль', 'перепиши', 'улучши текст', 'коррект'],
+    reason: 'Задача требует редакторской обработки, вычитки или улучшения стиля.'
+  },
+  SM_MANAGER: {
+    signals: ['контент-план', 'публикац', 'расписани', 'телеграм', 'соцсет', 'smm', 'охват', 'вовлеч'],
+    reason: 'Задача относится к публикациям, контент-плану и управлению соцсетями.'
+  },
+  MASTER_AGENT: {
+    signals: [],
+    reason: 'Задача комплексная или без явной специализации, поэтому ответ формирует Master Agent.'
   }
 };
 
@@ -116,14 +121,17 @@ ${sourcesContext}
 СТРУКТУРА КОМАНДЫ
 ═══════════════════════════════════════════════════════════════
 
-У тебя есть 6 специализированных агентов:
+У тебя есть 3 специализированных агента:
 
 1. CONTENT_CREATOR — создание постов, сценариев, рубрик
-2. EDITOR — вычитка, редактура, согласование стиля  
-3. ANALYST — исследование рынка, конкурентов, трендов
-4. DESIGNER — визуалы, шаблоны, инфографика, креативы
-5. SMM_MANAGER — планирование публикаций, модерация
-6. GROWTH_MANAGER — стратегия роста, лидогенерация
+2. EDITOR — вычитка, редактура, согласование стиля
+3. SM_MANAGER — публикации, контент-план, модерация
+
+Алгоритм работы:
+1) Проанализируй задачу пользователя.
+2) Выбери, кому делегировать задачу (одному из 3 агентов).
+3) Дай ответ от выбранного агента.
+4) Если задача затрагивает несколько ролей, можешь ответить как MASTER_AGENT и кратко указать вклад каждого.
 
 ═══════════════════════════════════════════════════════════════
 ВАЖНО: ФОРМАТ ОТВЕТА
@@ -136,10 +144,7 @@ ${sourcesContext}
 Где [ИМЯ_АГЕНТА] — одно из:
 - CONTENT_CREATOR
 - EDITOR
-- ANALYST
-- DESIGNER
-- SMM_MANAGER
-- GROWTH_MANAGER
+- SM_MANAGER
 - MASTER_AGENT (если отвечаешь сам)
 
 Пример:
@@ -152,37 +157,81 @@ ${sourcesContext}
 function detectAgent(content) {
   const match = content.match(/🤖\s*АГЕНТ:\s*(\w+)/i);
   if (match) {
-    const agentKey = match[1].toUpperCase();
+    const rawKey = match[1].toUpperCase();
+    const agentKey = AGENT_ALIASES[rawKey] || rawKey;
     if (AGENTS_INFO[agentKey]) {
       return {
-        key: agentKey,
-        ...AGENTS_INFO[agentKey]
+        agent: {
+          key: agentKey,
+          ...AGENTS_INFO[agentKey]
+        },
+        method: 'header_tag'
       };
     }
   }
   
   // Fallback: ищем по ключевым словам
   const lower = content.toLowerCase();
-  if (lower.includes('content creator') || lower.includes('пост') || lower.includes('текст')) {
-    return { key: 'CONTENT_CREATOR', ...AGENTS_INFO['CONTENT_CREATOR'] };
+  if (lower.includes('content creator') || lower.includes('content agent') || lower.includes('пост') || lower.includes('текст')) {
+    return {
+      agent: { key: 'CONTENT_CREATOR', ...AGENTS_INFO['CONTENT_CREATOR'] },
+      method: 'keyword_fallback'
+    };
   }
-  if (lower.includes('analyst') || lower.includes('аналитик') || lower.includes('метрик')) {
-    return { key: 'ANALYST', ...AGENTS_INFO['ANALYST'] };
+  if (lower.includes('editor') || lower.includes('редактор') || lower.includes('вычитка') || lower.includes('редактура')) {
+    return {
+      agent: { key: 'EDITOR', ...AGENTS_INFO['EDITOR'] },
+      method: 'keyword_fallback'
+    };
   }
-  if (lower.includes('designer') || lower.includes('дизайн') || lower.includes('баннер')) {
-    return { key: 'DESIGNER', ...AGENTS_INFO['DESIGNER'] };
-  }
-  if (lower.includes('smm manager') || lower.includes('smm') || lower.includes('план')) {
-    return { key: 'SMM_MANAGER', ...AGENTS_INFO['SMM_MANAGER'] };
-  }
-  if (lower.includes('growth manager') || lower.includes('growth') || lower.includes('подписчик')) {
-    return { key: 'GROWTH_MANAGER', ...AGENTS_INFO['GROWTH_MANAGER'] };
-  }
-  if (lower.includes('editor') || lower.includes('редактор') || lower.includes('вычитка')) {
-    return { key: 'EDITOR', ...AGENTS_INFO['EDITOR'] };
+  if (
+    lower.includes('sm manager') ||
+    lower.includes('sm agent') ||
+    lower.includes('smm') ||
+    lower.includes('соцсет') ||
+    lower.includes('контент-план') ||
+    lower.includes('публикац')
+  ) {
+    return {
+      agent: { key: 'SM_MANAGER', ...AGENTS_INFO['SM_MANAGER'] },
+      method: 'keyword_fallback'
+    };
   }
   
-  return { key: 'MASTER_AGENT', ...AGENTS_INFO['MASTER_AGENT'] };
+  return {
+    agent: { key: 'MASTER_AGENT', ...AGENTS_INFO['MASTER_AGENT'] },
+    method: 'master_fallback'
+  };
+}
+
+function buildRoutingInfo(userMessage, selectedAgentKey, detectionMethod) {
+  const normalized = (userMessage || '').toLowerCase();
+  const rule = ROUTING_RULES[selectedAgentKey] || ROUTING_RULES.MASTER_AGENT;
+  const matchedSignals = [...new Set(
+    (rule.signals || []).filter(signal => normalized.includes(signal))
+  )].slice(0, 4);
+
+  let confidence = 'low';
+  if (detectionMethod === 'header_tag' || matchedSignals.length >= 2) {
+    confidence = 'high';
+  } else if (matchedSignals.length === 1) {
+    confidence = 'medium';
+  }
+
+  const reason = matchedSignals.length > 0
+    ? `${rule.reason} Триггеры: ${matchedSignals.join(', ')}.`
+    : rule.reason;
+
+  return {
+    masterAgentKey: 'MASTER_AGENT',
+    selectedAgent: selectedAgentKey,
+    selectedAgentKey,
+    selectedAgentName: AGENTS_INFO[selectedAgentKey]?.name || selectedAgentKey,
+    reason,
+    confidence,
+    detectionMethod,
+    matchedSignals
+  };
 }
 
 // Chat endpoint
@@ -190,6 +239,9 @@ app.post('/api/chat', async (req, res) => {
   try {
     const { messages, model } = req.body;
     const modelToUse = model || currentModel;
+    const latestUserMessage = Array.isArray(messages)
+      ? [...messages].reverse().find(message => message.role === 'user')?.content || ''
+      : '';
     
     if (!process.env.OPENROUTER_API_KEY) {
       return res.status(500).json({ error: 'OPENROUTER_API_KEY not configured' });
@@ -219,9 +271,11 @@ app.post('/api/chat', async (req, res) => {
     const data = await response.json();
     
     const content = data.choices?.[0]?.message?.content || '';
-    const agent = detectAgent(content);
+    const { agent, method } = detectAgent(content);
+    const routing = buildRoutingInfo(latestUserMessage, agent.key, method);
     
     data.agent = agent;
+    data.routing = routing;
     
     res.json(data);
   } catch (error) {
