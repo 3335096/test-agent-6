@@ -60,6 +60,25 @@ const AGENT_ALIASES = {
   CONTENT: 'CONTENT_CREATOR'
 };
 
+const ROUTING_RULES = {
+  CONTENT_CREATOR: {
+    signals: ['пост', 'контент', 'текст', 'сценар', 'рубрик', 'идея', 'заголовок', 'описани'],
+    reason: 'Задача связана с созданием контента и подготовкой материалов.'
+  },
+  EDITOR: {
+    signals: ['редакт', 'вычит', 'исправ', 'граммат', 'стиль', 'перепиши', 'улучши текст', 'коррект'],
+    reason: 'Задача требует редакторской обработки, вычитки или улучшения стиля.'
+  },
+  SM_MANAGER: {
+    signals: ['контент-план', 'публикац', 'расписани', 'телеграм', 'соцсет', 'smm', 'охват', 'вовлеч'],
+    reason: 'Задача относится к публикациям, контент-плану и управлению соцсетями.'
+  },
+  MASTER_AGENT: {
+    signals: [],
+    reason: 'Задача комплексная или без явной специализации, поэтому ответ формирует Master Agent.'
+  }
+};
+
 app.use(cors());
 app.use(express.json());
 
@@ -142,8 +161,11 @@ function detectAgent(content) {
     const agentKey = AGENT_ALIASES[rawKey] || rawKey;
     if (AGENTS_INFO[agentKey]) {
       return {
-        key: agentKey,
-        ...AGENTS_INFO[agentKey]
+        agent: {
+          key: agentKey,
+          ...AGENTS_INFO[agentKey]
+        },
+        method: 'header_tag'
       };
     }
   }
@@ -151,10 +173,16 @@ function detectAgent(content) {
   // Fallback: ищем по ключевым словам
   const lower = content.toLowerCase();
   if (lower.includes('content creator') || lower.includes('content agent') || lower.includes('пост') || lower.includes('текст')) {
-    return { key: 'CONTENT_CREATOR', ...AGENTS_INFO['CONTENT_CREATOR'] };
+    return {
+      agent: { key: 'CONTENT_CREATOR', ...AGENTS_INFO['CONTENT_CREATOR'] },
+      method: 'keyword_fallback'
+    };
   }
   if (lower.includes('editor') || lower.includes('редактор') || lower.includes('вычитка') || lower.includes('редактура')) {
-    return { key: 'EDITOR', ...AGENTS_INFO['EDITOR'] };
+    return {
+      agent: { key: 'EDITOR', ...AGENTS_INFO['EDITOR'] },
+      method: 'keyword_fallback'
+    };
   }
   if (
     lower.includes('sm manager') ||
@@ -164,10 +192,46 @@ function detectAgent(content) {
     lower.includes('контент-план') ||
     lower.includes('публикац')
   ) {
-    return { key: 'SM_MANAGER', ...AGENTS_INFO['SM_MANAGER'] };
+    return {
+      agent: { key: 'SM_MANAGER', ...AGENTS_INFO['SM_MANAGER'] },
+      method: 'keyword_fallback'
+    };
   }
   
-  return { key: 'MASTER_AGENT', ...AGENTS_INFO['MASTER_AGENT'] };
+  return {
+    agent: { key: 'MASTER_AGENT', ...AGENTS_INFO['MASTER_AGENT'] },
+    method: 'master_fallback'
+  };
+}
+
+function buildRoutingInfo(userMessage, selectedAgentKey, detectionMethod) {
+  const normalized = (userMessage || '').toLowerCase();
+  const rule = ROUTING_RULES[selectedAgentKey] || ROUTING_RULES.MASTER_AGENT;
+  const matchedSignals = [...new Set(
+    (rule.signals || []).filter(signal => normalized.includes(signal))
+  )].slice(0, 4);
+
+  let confidence = 'low';
+  if (detectionMethod === 'header_tag' || matchedSignals.length >= 2) {
+    confidence = 'high';
+  } else if (matchedSignals.length === 1) {
+    confidence = 'medium';
+  }
+
+  const reason = matchedSignals.length > 0
+    ? `${rule.reason} Триггеры: ${matchedSignals.join(', ')}.`
+    : rule.reason;
+
+  return {
+    masterAgentKey: 'MASTER_AGENT',
+    selectedAgent: selectedAgentKey,
+    selectedAgentKey,
+    selectedAgentName: AGENTS_INFO[selectedAgentKey]?.name || selectedAgentKey,
+    reason,
+    confidence,
+    detectionMethod,
+    matchedSignals
+  };
 }
 
 // Chat endpoint
@@ -175,6 +239,9 @@ app.post('/api/chat', async (req, res) => {
   try {
     const { messages, model } = req.body;
     const modelToUse = model || currentModel;
+    const latestUserMessage = Array.isArray(messages)
+      ? [...messages].reverse().find(message => message.role === 'user')?.content || ''
+      : '';
     
     if (!process.env.OPENROUTER_API_KEY) {
       return res.status(500).json({ error: 'OPENROUTER_API_KEY not configured' });
@@ -204,9 +271,11 @@ app.post('/api/chat', async (req, res) => {
     const data = await response.json();
     
     const content = data.choices?.[0]?.message?.content || '';
-    const agent = detectAgent(content);
+    const { agent, method } = detectAgent(content);
+    const routing = buildRoutingInfo(latestUserMessage, agent.key, method);
     
     data.agent = agent;
+    data.routing = routing;
     
     res.json(data);
   } catch (error) {
