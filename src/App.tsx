@@ -663,10 +663,10 @@ function App() {
 
   return (
     <div className="app-bootstrap">
-      <div className="container-fluid py-3">
+      <div className="container-fluid py-4 px-3 px-xl-4">
         <div className="row g-3">
           <aside className="col-12 col-lg-4 col-xl-3" aria-label="Панель управления">
-            <div className="card shadow-sm h-100">
+            <div className="card app-shell-card shadow-sm h-100">
               <div className="card-header bg-white">
                 <div className="d-flex align-items-center gap-2">
                   <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center app-icon"><Bot size={16} /></div>
@@ -675,12 +675,30 @@ function App() {
                 </div>
               </div>
 
-              <div className="card-body d-grid gap-3">
+              <div className="card-body d-grid gap-3 app-sidebar-body">
                 <section aria-label="Быстрая статистика">
                   <div className="row g-2">
-                    <div className="col-4"><div className="border rounded p-2 text-center h-100"><Users size={16} className="text-primary mb-1" /><div className="small text-muted">Агентов</div><div className="fw-semibold">4</div></div></div>
-                    <div className="col-4"><div className="border rounded p-2 text-center h-100"><MessageSquare size={16} className="text-secondary mb-1" /><div className="small text-muted">Чатов</div><div className="fw-semibold">{messages.length}</div></div></div>
-                    <div className="col-4"><div className="border rounded p-2 text-center h-100"><Target size={16} className="text-success mb-1" /><div className="small text-muted">Задач</div><div className="fw-semibold">{messages.filter((m) => m.role === 'user').length}</div></div></div>
+                    <div className="col-4">
+                      <div className="rounded app-mini-stat p-2 text-center h-100">
+                        <Users size={16} className="text-primary mb-1" />
+                        <div className="small text-muted">Агентов</div>
+                        <div className="fw-semibold">4</div>
+                      </div>
+                    </div>
+                    <div className="col-4">
+                      <div className="rounded app-mini-stat p-2 text-center h-100">
+                        <MessageSquare size={16} className="text-secondary mb-1" />
+                        <div className="small text-muted">Чатов</div>
+                        <div className="fw-semibold">{messages.length}</div>
+                      </div>
+                    </div>
+                    <div className="col-4">
+                      <div className="rounded app-mini-stat p-2 text-center h-100">
+                        <Target size={16} className="text-success mb-1" />
+                        <div className="small text-muted">Задач</div>
+                        <div className="fw-semibold">{messages.filter((m) => m.role === 'user').length}</div>
+                      </div>
+                    </div>
                   </div>
                 </section>
 
@@ -708,7 +726,7 @@ function App() {
                     const requestsHandled = getAgentMessagesCount(agent.key)
                     const colorClass = AGENT_COLORS[agent.key] || 'text-bg-secondary'
                     return (
-                      <article key={agent.key} className="border rounded p-2" aria-label={`Агент ${agent.label}`}>
+                      <article key={agent.key} className="border rounded p-2 app-agent-card" aria-label={`Агент ${agent.label}`}>
                         <div className="d-flex align-items-start justify-content-between gap-2">
                           <div className="d-flex align-items-start gap-2">
                             <div className={`rounded d-flex align-items-center justify-content-center text-white agent-badge ${colorClass}`}>{AGENT_ICONS[agent.key]}</div>
@@ -717,8 +735,18 @@ function App() {
                           <span className={`badge ${settings?.is_active === false ? 'text-bg-danger' : 'text-bg-success'}`}>{settings?.is_active === false ? 'off' : 'on'}</span>
                         </div>
                         <div className="row g-2 mt-1">
-                          <div className="col-6"><div className="border rounded p-1"><div className="text-muted very-small">Ответов</div><div className="small fw-semibold">{requestsHandled}</div></div></div>
-                          <div className="col-6"><div className="border rounded p-1"><div className="text-muted very-small">Промпт</div><div className="small fw-semibold">{(settings?.custom_prompt || '').trim() ? 'кастом' : 'базовый'}</div></div></div>
+                          <div className="col-6">
+                            <div className="border rounded p-1 app-mini-stat">
+                              <div className="text-muted very-small">Ответов</div>
+                              <div className="small fw-semibold">{requestsHandled}</div>
+                            </div>
+                          </div>
+                          <div className="col-6">
+                            <div className="border rounded p-1 app-mini-stat">
+                              <div className="text-muted very-small">Промпт</div>
+                              <div className="small fw-semibold">{(settings?.custom_prompt || '').trim() ? 'кастом' : 'базовый'}</div>
+                            </div>
+                          </div>
                         </div>
                         <button type="button" className="btn btn-outline-secondary btn-sm w-100 mt-2" onClick={() => openSettingsModal(agent.key)}><Settings size={14} className="me-1" />Настроить агента</button>
                       </article>
@@ -732,7 +760,7 @@ function App() {
           </aside>
 
           <main className="col-12 col-lg-8 col-xl-9" aria-label="Чат мастер-агента">
-            <div className="card shadow-sm app-chat-card">
+            <div className="card app-shell-card shadow-sm app-chat-card">
               <div className="card-header bg-white d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2"><Sparkles size={18} className="text-warning" /><div><h2 className="h6 mb-0">Чат с Мастер-агентом</h2><small className="text-muted">Координатор команды контент-маркетинга</small></div></div>
                 <span className="badge text-bg-light border"><Cpu size={12} className="me-1" />{getCurrentModelName()}</span>
@@ -740,10 +768,10 @@ function App() {
 
               {error && <div className="alert alert-danger rounded-0 mb-0" role="alert"><AlertCircle size={16} className="me-2" />{error}</div>}
 
-              <div className="card-body app-chat-scroll" ref={scrollRef}>
+              <div className="card-body app-chat-scroll px-3 px-md-4 py-3" ref={scrollRef}>
                 <div className="d-grid gap-3">
                   {messages.map((message) => (
-                    <div key={message.id} className={`d-flex gap-2 ${message.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}>
+                    <div key={message.id} className={`d-flex gap-2 align-items-end ${message.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}>
                       {message.role === 'assistant' && <div className="rounded-circle text-bg-dark d-flex align-items-center justify-content-center app-avatar">{message.agent ? AGENT_ICONS[message.agent.key] : <Bot size={16} />}</div>}
                       <div className={`app-message ${message.role === 'user' ? 'app-message-user' : 'app-message-assistant'}`}>
                         {message.role === 'assistant' && message.agent && <AgentBadge agent={message.agent} />}
@@ -768,7 +796,7 @@ function App() {
                 </div>
               </div>
 
-              <div className="card-footer bg-white">
+              <div className="card-footer bg-white px-3 px-md-4 py-3">
                 <form className="row g-2 align-items-center" onSubmit={(e) => { e.preventDefault(); handleSend() }}>
                   <div className="col">
                     <label htmlFor="chat-input" className="visually-hidden">Сообщение</label>
