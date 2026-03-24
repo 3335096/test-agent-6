@@ -447,12 +447,12 @@ function App() {
   const [isLoadingModels, setIsLoadingModels] = useState(true)
   
   const scrollRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  // Авто-скролл к новому сообщению
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isTyping])
 
   useEffect(() => {
     checkApiStatus()
@@ -831,7 +831,11 @@ function App() {
         )}
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+        <div 
+          className="flex-1 overflow-y-auto p-6" 
+          ref={scrollRef}
+          style={{ scrollBehavior: 'smooth' }}
+        >
           <div className="space-y-6 max-w-4xl mx-auto">
             {messages.map((message) => (
               <div
@@ -874,8 +878,10 @@ function App() {
                 </div>
               </div>
             )}
+            {/* Элемент для авто-скролла */}
+            <div ref={messagesEndRef} />
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Input Area */}
         <div className="p-6 bg-white border-t border-slate-200">
