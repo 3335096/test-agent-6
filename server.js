@@ -37,8 +37,8 @@ const AGENTS_INFO = {
     color: '#8b5cf6',
     icon: 'Edit3'
   },
-  'SM_MANAGER': {
-    name: 'SM Agent',
+  'SMM_MANAGER': {
+    name: 'SMM Agent',
     role: 'Social Media',
     description: 'Публикации, контент-план, модерация',
     color: '#f97316',
@@ -54,9 +54,9 @@ const AGENTS_INFO = {
 };
 
 const AGENT_ALIASES = {
-  SMM_MANAGER: 'SM_MANAGER',
-  SM_AGENT: 'SM_MANAGER',
-  SOCIAL_MEDIA_MANAGER: 'SM_MANAGER',
+  SM_MANAGER: 'SMM_MANAGER',
+  SM_AGENT: 'SMM_MANAGER',
+  SOCIAL_MEDIA_MANAGER: 'SMM_MANAGER',
   CONTENT: 'CONTENT_CREATOR'
 };
 
@@ -69,7 +69,7 @@ const ROUTING_RULES = {
     signals: ['редакт', 'вычит', 'исправ', 'граммат', 'стиль', 'перепиши', 'улучши текст', 'коррект'],
     reason: 'Задача требует редакторской обработки, вычитки или улучшения стиля.'
   },
-  SM_MANAGER: {
+  SMM_MANAGER: {
     signals: ['контент-план', 'публикац', 'расписани', 'телеграм', 'соцсет', 'smm', 'охват', 'вовлеч'],
     reason: 'Задача относится к публикациям, контент-плану и управлению соцсетями.'
   },
@@ -78,6 +78,8 @@ const ROUTING_RULES = {
     reason: 'Задача комплексная или без явной специализации, поэтому ответ формирует Master Agent.'
   }
 };
+
+const AGENT_KEYS = Object.keys(AGENTS_INFO);
 
 app.use(cors());
 app.use(express.json());
@@ -95,6 +97,27 @@ function getSourcesContext() {
 // Обновлённый системный промпт с источниками
 function getSystemPrompt() {
   const sourcesContext = getSourcesContext();
+  const agentsSettings = db.getAllAgentSettings();
+  const settingsByAgent = agentsSettings.reduce((acc, setting) => {
+    acc[setting.agent_key] = setting;
+    return acc;
+  }, {});
+  const agentsPromptBlock = AGENT_KEYS
+    .map((key) => {
+      const info = AGENTS_INFO[key];
+      const setting = settingsByAgent[key];
+      if (!setting) {
+        return `- ${key} (${info.name}): пользовательские настройки не заданы`;
+      }
+      return [
+        `- ${key} (${info.name}):`,
+        `  • custom_prompt: ${setting.custom_prompt || 'не задан'}`,
+        `  • clarifications: ${setting.clarifications || 'не заданы'}`,
+        `  • goals: ${setting.goals || 'не заданы'}`,
+        `  • constraints: ${setting.constraints || 'не заданы'}`
+      ].join('\n');
+    })
+    .join('\n');
   
   return `╔══════════════════════════════════════════════════════════════╗
 ║           МАСТЕР-АГЕНТ: КООРДИНАТОР КОНТЕНТ-ТИМЫ            ║
@@ -125,13 +148,18 @@ ${sourcesContext}
 
 1. CONTENT_CREATOR — создание постов, сценариев, рубрик
 2. EDITOR — вычитка, редактура, согласование стиля
-3. SM_MANAGER — публикации, контент-план, модерация
+3. SMM_MANAGER — публикации, контент-план, модерация
 
 Алгоритм работы:
 1) Проанализируй задачу пользователя.
 2) Выбери, кому делегировать задачу (одному из 3 агентов).
 3) Дай ответ от выбранного агента.
 4) Если задача затрагивает несколько ролей, можешь ответить как MASTER_AGENT и кратко указать вклад каждого.
+
+═══════════════════════════════════════════════════════════════
+ПОЛЬЗОВАТЕЛЬСКИЕ НАСТРОЙКИ АГЕНТОВ
+═══════════════════════════════════════════════════════════════
+${agentsPromptBlock}
 
 ═══════════════════════════════════════════════════════════════
 ВАЖНО: ФОРМАТ ОТВЕТА
@@ -144,7 +172,7 @@ ${sourcesContext}
 Где [ИМЯ_АГЕНТА] — одно из:
 - CONTENT_CREATOR
 - EDITOR
-- SM_MANAGER
+- SMM_MANAGER
 - MASTER_AGENT (если отвечаешь сам)
 
 Пример:
@@ -187,13 +215,15 @@ function detectAgent(content) {
   if (
     lower.includes('sm manager') ||
     lower.includes('sm agent') ||
+    lower.includes('smm manager') ||
+    lower.includes('smm agent') ||
     lower.includes('smm') ||
     lower.includes('соцсет') ||
     lower.includes('контент-план') ||
     lower.includes('публикац')
   ) {
     return {
-      agent: { key: 'SM_MANAGER', ...AGENTS_INFO['SM_MANAGER'] },
+      agent: { key: 'SMM_MANAGER', ...AGENTS_INFO['SMM_MANAGER'] },
       method: 'keyword_fallback'
     };
   }
@@ -276,6 +306,21 @@ app.post('/api/chat', async (req, res) => {
     
     data.agent = agent;
     data.routing = routing;
+
+    // Сохраняем только новую пару сообщений, чтобы не терять метаданные агентов
+    if (latestUserMessage) {
+      db.addChatMessage({
+        role: 'user',
+        content: latestUserMessage
+      });
+    }
+    db.addChatMessage({
+      role: 'assistant',
+      content,
+      agent_key: agent.key,
+      agent,
+      routing
+    });
     
     res.json(data);
   } catch (error) {
@@ -424,6 +469,102 @@ app.get('/api/model/current', (req, res) => {
 
 app.get('/api/agents', (req, res) => {
   res.json(AGENTS_INFO);
+});
+
+app.get('/api/agents/settings', (req, res) => {
+  try {
+    const settings = db.getAllAgentSettings();
+    res.json({ settings });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get agent settings', details: error.message });
+  }
+});
+
+app.get('/api/agents/:agentKey/settings', (req, res) => {
+  try {
+    const rawKey = String(req.params.agentKey || '').toUpperCase();
+    const agentKey = AGENT_ALIASES[rawKey] || rawKey;
+    if (!AGENTS_INFO[agentKey]) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    const setting = db.getAgentSetting(agentKey) || {
+      agent_key: agentKey,
+      custom_prompt: '',
+      clarifications: '',
+      goals: '',
+      constraints: '',
+      is_active: true
+    };
+    res.json({ setting });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get agent setting', details: error.message });
+  }
+});
+
+app.put('/api/agents/:agentKey/settings', (req, res) => {
+  try {
+    const rawKey = String(req.params.agentKey || '').toUpperCase();
+    const agentKey = AGENT_ALIASES[rawKey] || rawKey;
+    if (!AGENTS_INFO[agentKey]) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    const { custom_prompt, clarifications, goals, constraints, is_active } = req.body || {};
+    const setting = db.upsertAgentSetting(agentKey, {
+      custom_prompt: custom_prompt ?? '',
+      clarifications: clarifications ?? '',
+      goals: goals ?? '',
+      constraints: constraints ?? '',
+      is_active: is_active ?? true
+    });
+    res.json({ success: true, setting });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update agent setting', details: error.message });
+  }
+});
+
+app.get('/api/chat/history', (req, res) => {
+  try {
+    const limit = Number(req.query.limit || 200);
+    const messages = db.getChatHistory(Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 500) : 200);
+    res.json({ messages });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get chat history', details: error.message });
+  }
+});
+
+app.post('/api/chat/history', (req, res) => {
+  try {
+    const { messages } = req.body || {};
+    if (!Array.isArray(messages)) {
+      return res.status(400).json({ error: 'messages must be an array' });
+    }
+
+    messages.forEach((message) => {
+      if (!message || !message.role || !message.content) return;
+      db.addChatMessage({
+        role: message.role,
+        content: message.content,
+        agent_key: message.agent_key || message.agent?.key,
+        agent: message.agent,
+        routing: message.routing,
+        created_at: message.created_at
+      });
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save chat history', details: error.message });
+  }
+});
+
+app.delete('/api/chat/history', (req, res) => {
+  try {
+    const deleted = db.clearChatHistory();
+    res.json({ success: true, deleted });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear chat history', details: error.message });
+  }
 });
 
 // ============ HEALTH CHECK ============
