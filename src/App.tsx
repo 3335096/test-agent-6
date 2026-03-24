@@ -1,22 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
-import { 
-  Send, 
-  Bot, 
-  User, 
-  Sparkles, 
-  PenTool, 
-  Calendar, 
+import {
+  Send,
+  Bot,
+  User,
+  Sparkles,
+  PenTool,
+  Calendar,
   Edit3,
   MessageSquare,
   Users,
   Target,
-  Zap,
   AlertCircle,
   Loader2,
   Settings,
   Cpu,
-  Check,
   Database,
   Plus,
   Trash2,
@@ -31,17 +29,7 @@ import {
   Newspaper,
   Wrench
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { toast } from 'sonner'
+import { Toaster, toast } from 'sonner'
 
 interface Message {
   id: string
@@ -98,36 +86,27 @@ interface Source {
   created_at: string
 }
 
-// Иконки агентов
 const AGENT_ICONS: Record<string, React.ReactNode> = {
-  'CONTENT_CREATOR': <PenTool className="w-5 h-5" />,
-  'EDITOR': <Edit3 className="w-5 h-5" />,
-  'SMM_MANAGER': <Calendar className="w-5 h-5" />,
-  'MASTER_AGENT': <Bot className="w-5 h-5" />
+  CONTENT_CREATOR: <PenTool size={16} />,
+  EDITOR: <Edit3 size={16} />,
+  SMM_MANAGER: <Calendar size={16} />,
+  MASTER_AGENT: <Bot size={16} />
 }
 
 const AGENT_COLORS: Record<string, string> = {
-  'CONTENT_CREATOR': 'bg-blue-500',
-  'EDITOR': 'bg-purple-500',
-  'SMM_MANAGER': 'bg-orange-500',
-  'MASTER_AGENT': 'bg-indigo-500'
+  CONTENT_CREATOR: 'text-bg-primary',
+  EDITOR: 'text-bg-secondary',
+  SMM_MANAGER: 'text-bg-warning',
+  MASTER_AGENT: 'text-bg-dark'
 }
 
-const AGENT_GRADIENTS: Record<string, string> = {
-  'CONTENT_CREATOR': 'from-blue-500 to-blue-600',
-  'EDITOR': 'from-purple-500 to-purple-600',
-  'SMM_MANAGER': 'from-orange-500 to-orange-600',
-  'MASTER_AGENT': 'from-indigo-500 to-indigo-600'
-}
-
-// Иконки типов источников
 const SOURCE_TYPE_ICONS: Record<string, React.ReactNode> = {
-  'website': <Globe className="w-4 h-4" />,
-  'blog': <FileText className="w-4 h-4" />,
-  'news': <Newspaper className="w-4 h-4" />,
-  'rss': <Rss className="w-4 h-4" />,
-  'youtube': <Youtube className="w-4 h-4" />,
-  'documentation': <BookOpen className="w-4 h-4" />
+  website: <Globe size={16} />,
+  blog: <FileText size={16} />,
+  news: <Newspaper size={16} />,
+  rss: <Rss size={16} />,
+  youtube: <Youtube size={16} />,
+  documentation: <BookOpen size={16} />
 }
 
 const welcomeMessage = `🤖 АГЕНТ: MASTER_AGENT
@@ -142,11 +121,10 @@ const welcomeMessage = `🤖 АГЕНТ: MASTER_AGENT
 
 const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:3001')
 
-// Компонент для управления источниками
 function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
   const [sources, setSources] = useState<Source[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [showForm, setShowForm] = useState(false)
   const [editingSource, setEditingSource] = useState<Source | null>(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -177,17 +155,14 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const payload = {
       ...formData,
-      tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean)
+      tags: formData.tags.split(',').map((t) => t.trim()).filter(Boolean)
     }
 
     try {
-      const url = editingSource 
-        ? `${API_URL}/api/sources/${editingSource.id}`
-        : `${API_URL}/api/sources`
-      
+      const url = editingSource ? `${API_URL}/api/sources/${editingSource.id}` : `${API_URL}/api/sources`
       const response = await fetch(url, {
         method: editingSource ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -196,7 +171,7 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
 
       if (response.ok) {
         toast.success(editingSource ? 'Источник обновлён' : 'Источник добавлен')
-        setIsDialogOpen(false)
+        setShowForm(false)
         setEditingSource(null)
         setFormData({ name: '', url: '', type: 'website', category: '', description: '', tags: '' })
         loadSources()
@@ -204,14 +179,13 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
       } else {
         toast.error('Ошибка при сохранении')
       }
-    } catch (err) {
+    } catch {
       toast.error('Ошибка сети')
     }
   }
 
   const handleDelete = async (id: number) => {
     if (!confirm('Удалить этот источник?')) return
-    
     try {
       const response = await fetch(`${API_URL}/api/sources/${id}`, { method: 'DELETE' })
       if (response.ok) {
@@ -219,7 +193,7 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
         loadSources()
         onSourcesChange()
       }
-    } catch (err) {
+    } catch {
       toast.error('Ошибка при удалении')
     }
   }
@@ -231,12 +205,12 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
         loadSources()
         onSourcesChange()
       }
-    } catch (err) {
+    } catch {
       toast.error('Ошибка')
     }
   }
 
-  const openEditDialog = (source: Source) => {
+  const openEditForm = (source: Source) => {
     setEditingSource(source)
     setFormData({
       name: source.name,
@@ -246,176 +220,116 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
       description: source.description,
       tags: (source.tags || []).join(', ')
     })
-    setIsDialogOpen(true)
+    setShowForm(true)
   }
 
-  const openAddDialog = () => {
+  const openCreateForm = () => {
     setEditingSource(null)
     setFormData({ name: '', url: '', type: 'website', category: '', description: '', tags: '' })
-    setIsDialogOpen(true)
+    setShowForm(true)
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Источники информации</h3>
-        <Button onClick={openAddDialog} size="sm">
-          <Plus className="w-4 h-4 mr-1" />
+    <section aria-label="Управление источниками" className="d-grid gap-3">
+      <div className="d-flex justify-content-between align-items-center">
+        <h3 className="h5 mb-0">Источники информации</h3>
+        <button type="button" className="btn btn-primary btn-sm" onClick={openCreateForm}>
+          <Plus size={16} className="me-1" />
           Добавить
-        </Button>
+        </button>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-slate-500">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Загрузка...
+        <div className="d-flex align-items-center text-secondary">
+          <div className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+          <span>Загрузка...</span>
         </div>
       ) : sources.length === 0 ? (
-        <div className="text-center py-8 text-slate-500">
-          <Database className="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p>Нет источников</p>
-          <p className="text-sm">Добавьте первый источник информации</p>
+        <div className="text-center text-secondary py-4 border rounded">
+          <Database size={36} className="mb-2" />
+          <p className="mb-1">Нет источников</p>
+          <p className="mb-0 small">Добавьте первый источник информации</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {sources.map(source => (
-            <div 
-              key={source.id} 
-              className={`flex items-center gap-3 p-3 rounded-lg border ${source.is_active ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'}`}
-            >
-              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                {SOURCE_TYPE_ICONS[source.type] || <Globe className="w-4 h-4" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm truncate">{source.name}</span>
-                  {source.category && (
-                    <Badge variant="secondary" className="text-xs">{source.category}</Badge>
-                  )}
+        <div className="list-group">
+          {sources.map((source) => (
+            <div key={source.id} className={`list-group-item d-flex align-items-start justify-content-between gap-3 ${source.is_active ? '' : 'opacity-75'}`}>
+              <div className="d-flex align-items-start gap-2">
+                <div className="border rounded d-flex align-items-center justify-content-center source-icon">
+                  {SOURCE_TYPE_ICONS[source.type] || <Globe size={16} />}
                 </div>
-                <a 
-                  href={source.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-xs text-slate-500 hover:text-blue-500 flex items-center gap-1 truncate"
-                >
-                  {source.url}
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                <div>
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <strong className="small">{source.name}</strong>
+                    {source.category && <span className="badge text-bg-light">{source.category}</span>}
+                  </div>
+                  <a href={source.url} target="_blank" rel="noopener noreferrer" className="small text-decoration-none">
+                    {source.url} <ExternalLink size={12} />
+                  </a>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  onClick={() => handleToggle(source.id)}
-                >
-                  <Power className={`w-4 h-4 ${source.is_active ? 'text-green-500' : 'text-slate-400'}`} />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  onClick={() => openEditDialog(source)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 text-red-500 hover:text-red-600"
-                  onClick={() => handleDelete(source.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+
+              <div className="btn-group btn-group-sm" role="group" aria-label="Управление источником">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => handleToggle(source.id)} aria-label={source.is_active ? 'Отключить источник' : 'Включить источник'}>
+                  <Power size={14} className={source.is_active ? 'text-success' : 'text-secondary'} />
+                </button>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => openEditForm(source)} aria-label="Редактировать источник">
+                  <Edit size={14} />
+                </button>
+                <button type="button" className="btn btn-outline-danger" onClick={() => handleDelete(source.id)} aria-label="Удалить источник">
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingSource ? 'Редактировать источник' : 'Добавить источник'}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Название</Label>
-              <Input 
-                id="name" 
-                value={formData.name} 
-                onChange={e => setFormData({...formData, name: e.target.value})}
-                placeholder="Например: Habr"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="url">URL</Label>
-              <Input 
-                id="url" 
-                value={formData.url} 
-                onChange={e => setFormData({...formData, url: e.target.value})}
-                placeholder="https://..."
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="type">Тип</Label>
-              <Select value={formData.type} onValueChange={v => setFormData({...formData, type: v})}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="website">Веб-сайт</SelectItem>
-                  <SelectItem value="blog">Блог</SelectItem>
-                  <SelectItem value="news">Новости</SelectItem>
-                  <SelectItem value="rss">RSS</SelectItem>
-                  <SelectItem value="youtube">YouTube</SelectItem>
-                  <SelectItem value="documentation">Документация</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="category">Категория</Label>
-              <Input 
-                id="category" 
-                value={formData.category} 
-                onChange={e => setFormData({...formData, category: e.target.value})}
-                placeholder="Например: Технологии"
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Описание</Label>
-              <Textarea 
-                id="description" 
-                value={formData.description} 
-                onChange={e => setFormData({...formData, description: e.target.value})}
-                placeholder="Краткое описание источника"
-                rows={2}
-              />
-            </div>
-            <div>
-              <Label htmlFor="tags">Теги (через запятую)</Label>
-              <Input 
-                id="tags" 
-                value={formData.tags} 
-                onChange={e => setFormData({...formData, tags: e.target.value})}
-                placeholder="ремонт, техника, советы"
-              />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Отмена
-              </Button>
-              <Button type="submit">
-                {editingSource ? 'Сохранить' : 'Добавить'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
+      {showForm && (
+        <div className="card border">
+          <div className="card-body">
+            <h4 className="h6 mb-3">{editingSource ? 'Редактировать источник' : 'Добавить источник'}</h4>
+            <form onSubmit={handleSubmit} className="row g-3" noValidate>
+              <div className="col-12">
+                <label htmlFor="source-name" className="form-label">Название</label>
+                <input id="source-name" className="form-control" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Например: Habr" required />
+              </div>
+              <div className="col-12">
+                <label htmlFor="source-url" className="form-label">URL</label>
+                <input id="source-url" type="url" className="form-control" value={formData.url} onChange={(e) => setFormData({ ...formData, url: e.target.value })} placeholder="https://..." required />
+              </div>
+              <div className="col-md-6">
+                <label htmlFor="source-type" className="form-label">Тип</label>
+                <select id="source-type" className="form-select" value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
+                  <option value="website">Веб-сайт</option>
+                  <option value="blog">Блог</option>
+                  <option value="news">Новости</option>
+                  <option value="rss">RSS</option>
+                  <option value="youtube">YouTube</option>
+                  <option value="documentation">Документация</option>
+                </select>
+              </div>
+              <div className="col-md-6">
+                <label htmlFor="source-category" className="form-label">Категория</label>
+                <input id="source-category" className="form-control" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} placeholder="Например: Технологии" />
+              </div>
+              <div className="col-12">
+                <label htmlFor="source-description" className="form-label">Описание</label>
+                <textarea id="source-description" className="form-control" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Краткое описание источника" rows={2} />
+              </div>
+              <div className="col-12">
+                <label htmlFor="source-tags" className="form-label">Теги (через запятую)</label>
+                <input id="source-tags" className="form-control" value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: e.target.value })} placeholder="ремонт, техника, советы" />
+              </div>
+              <div className="col-12 d-flex justify-content-end gap-2">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowForm(false)}>Отмена</button>
+                <button type="submit" className="btn btn-primary">{editingSource ? 'Сохранить' : 'Добавить'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -442,7 +356,6 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [apiStatus, setApiStatus] = useState<'checking' | 'connected' | 'error'>('checking')
   const [sourcesCount, setSourcesCount] = useState(0)
-  
   const [models, setModels] = useState<Model[]>([])
   const [currentModel, setCurrentModel] = useState<string>('')
   const [isLoadingModels, setIsLoadingModels] = useState(true)
@@ -456,11 +369,9 @@ function App() {
     is_active: true
   })
   const [isSavingAgent, setIsSavingAgent] = useState(false)
-  
   const scrollRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Авто-скролл к новому сообщению
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
@@ -474,21 +385,14 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const serializable = messages.filter(m => m.id !== 'welcome').map(message => ({
-      ...message,
-      timestamp: message.timestamp.toISOString()
-    }))
+    const serializable = messages.filter((m) => m.id !== 'welcome').map((message) => ({ ...message, timestamp: message.timestamp.toISOString() }))
     localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable))
   }, [messages])
 
   const checkApiStatus = async () => {
     try {
       const response = await fetch(`${API_URL}/api/health`)
-      if (response.ok) {
-        setApiStatus('connected')
-      } else {
-        setApiStatus('error')
-      }
+      setApiStatus(response.ok ? 'connected' : 'error')
     } catch {
       setApiStatus('error')
     }
@@ -541,26 +445,21 @@ function App() {
           routing: item.routing || undefined,
           timestamp: new Date(item.created_at || new Date())
         })) as Message[]
-
         if (history.length > 0) {
-          setMessages(prev => [prev[0], ...history])
+          setMessages((prev) => [prev[0], ...history])
           return
         }
       }
     } catch (err) {
       console.error('Failed to load history from API:', err)
     }
-
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (!saved) return
       const parsed = JSON.parse(saved)
       if (!Array.isArray(parsed) || parsed.length === 0) return
-      const restored = parsed.map((m: any) => ({
-        ...m,
-        timestamp: new Date(m.timestamp)
-      }))
-      setMessages(prev => [prev[0], ...restored])
+      const restored = parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
+      setMessages((prev) => [prev[0], ...restored])
     } catch (err) {
       console.error('Failed to restore local history:', err)
     }
@@ -571,9 +470,8 @@ function App() {
       const response = await fetch(`${API_URL}/api/agents/settings`)
       if (!response.ok) return
       const data = await response.json()
-      const entries = data.settings || []
       const map: Record<string, AgentSetting> = {}
-      entries.forEach((item: AgentSetting) => {
+      ;(data.settings || []).forEach((item: AgentSetting) => {
         map[item.agent_key] = item
       })
       setAgentSettings(map)
@@ -589,57 +487,40 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: modelId })
       })
-      
       if (response.ok) {
         setCurrentModel(modelId)
-        const modelInfo = models.find(m => m.id === modelId)
+        const modelInfo = models.find((m) => m.id === modelId)
         toast.success(`Модель изменена на ${modelInfo?.name || modelId}`)
       } else {
         toast.error('Не удалось изменить модель')
       }
-    } catch (err) {
+    } catch {
       toast.error('Ошибка при смене модели')
     }
   }
 
   const handleSend = async () => {
     if (!input.trim()) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input,
-      timestamp: new Date()
-    }
-
-    setMessages(prev => [...prev, userMessage])
+    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input, timestamp: new Date() }
+    setMessages((prev) => [...prev, userMessage])
     setInput('')
     setIsTyping(true)
     setError(null)
-
     try {
       const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: messages.filter(m => m.id !== 'welcome').concat(userMessage).map(m => ({
-            role: m.role,
-            content: m.content
-          })),
+          messages: messages.filter((m) => m.id !== 'welcome').concat(userMessage).map((m) => ({ role: m.role, content: m.content })),
           model: currentModel
         })
       })
-
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Ошибка при получении ответа')
       }
-
       const data = await response.json()
       const assistantContent = data.choices?.[0]?.message?.content || 'Извините, не удалось получить ответ'
-      
       const agentInfo = data.agent || {
         key: 'MASTER_AGENT',
         name: 'Master Agent',
@@ -648,7 +529,6 @@ function App() {
         color: '#6366f1',
         icon: 'Bot'
       }
-
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -657,10 +537,7 @@ function App() {
         routing: data.routing,
         timestamp: new Date()
       }
-
-      setMessages(prev => [...prev, assistantMessage])
-
-      // История сохраняется на сервере через /api/chat в бэкенде
+      setMessages((prev) => [...prev, assistantMessage])
     } catch (err: any) {
       setError(err.message || 'Произошла ошибка при отправке сообщения')
       console.error('Chat error:', err)
@@ -685,7 +562,7 @@ function App() {
     if (!activeSettingsAgent) return
     try {
       setIsSavingAgent(true)
-      const response = await fetch(`${API_URL}/api/agents/settings/${activeSettingsAgent}`, {
+      const response = await fetch(`${API_URL}/api/agents/${activeSettingsAgent}/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(agentForm)
@@ -695,506 +572,283 @@ function App() {
         return
       }
       const data = await response.json()
-      setAgentSettings(prev => ({ ...prev, [activeSettingsAgent]: data.setting }))
+      setAgentSettings((prev) => ({ ...prev, [activeSettingsAgent]: data.setting }))
       toast.success('Настройки агента сохранены')
-      setActiveSettingsAgent(null)
-    } catch (err) {
+      closeSettingsModal()
+    } catch {
       toast.error('Ошибка сети при сохранении настроек агента')
     } finally {
       setIsSavingAgent(false)
     }
   }
 
-  const getAgentMessagesCount = (agentKey: string) => messages.filter(m => m.role === 'assistant' && m.agent?.key === agentKey).length
+  const openSettingsModal = (agentKey: string) => {
+    openAgentSettings(agentKey)
+    const element = document.getElementById('agentSettingsModal')
+    if (!element || typeof window === 'undefined') return
+    const bootstrapWindow = (window as any).bootstrap
+    if (!bootstrapWindow?.Modal) return
+    bootstrapWindow.Modal.getOrCreateInstance(element).show()
+  }
 
+  const closeSettingsModal = () => {
+    setActiveSettingsAgent(null)
+    const element = document.getElementById('agentSettingsModal')
+    if (!element || typeof window === 'undefined') return
+    const bootstrapWindow = (window as any).bootstrap
+    if (!bootstrapWindow?.Modal) return
+    bootstrapWindow.Modal.getInstance(element)?.hide()
+  }
+
+  const clearHistory = async () => {
+    if (!confirm('Очистить историю чата?')) return
+    try {
+      await fetch(`${API_URL}/api/chat/history`, { method: 'DELETE' })
+    } catch {
+      // ignore network errors
+    }
+    localStorage.removeItem(STORAGE_KEY)
+    setMessages((prev) => [prev[0]])
+    toast.success('История очищена')
+  }
+
+  const getAgentMessagesCount = (agentKey: string) => messages.filter((m) => m.role === 'assistant' && m.agent?.key === agentKey).length
   const sidebarAgents = [
     { key: 'CONTENT_CREATOR', label: 'Content Agent', actions: 'Посты, рубрики, сценарии' },
     { key: 'EDITOR', label: 'Editor Agent', actions: 'Вычитка, стиль, улучшения' },
     { key: 'SMM_MANAGER', label: 'SMM Manager', actions: 'Контент-план, публикации, модерация' }
   ]
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-  }
+  const formatTime = (date: Date) => date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 
   const renderMessageContent = (content: string) => {
     const cleanContent = content.replace(/🤖\s*АГЕНТ:\s*\w+\n?/i, '').trim()
-    
     const parts = cleanContent.split(/(\*\*.*?\*\*|```[\s\S]*?```|`.*?`)/g)
     return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>
-      }
-      if (part.startsWith('```') && part.endsWith('```')) {
-        return (
-          <pre key={i} className="bg-slate-800 text-slate-100 p-3 rounded-lg my-2 overflow-x-auto text-sm">
-            <code>{part.slice(3, -3).trim()}</code>
-          </pre>
-        )
-      }
-      if (part.startsWith('`') && part.endsWith('`')) {
-        return <code key={i} className="bg-slate-100 px-1 py-0.5 rounded text-sm font-mono">{part.slice(1, -1)}</code>
-      }
-      return part
+      if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} className="fw-semibold">{part.slice(2, -2)}</strong>
+      if (part.startsWith('```') && part.endsWith('```')) return <pre key={i} className="bg-dark text-light rounded p-2 my-2 small overflow-auto"><code>{part.slice(3, -3).trim()}</code></pre>
+      if (part.startsWith('`') && part.endsWith('`')) return <code key={i} className="bg-light border rounded px-1 py-0 small">{part.slice(1, -1)}</code>
+      return <span key={i}>{part}</span>
     })
   }
 
   const getCurrentModelName = () => {
-    const model = models.find(m => m.id === currentModel)
+    const model = models.find((m) => m.id === currentModel)
     return model?.name || currentModel.split('/').pop() || 'AI'
   }
 
   const AgentBadge = ({ agent }: { agent?: AgentInfo }) => {
     if (!agent) return null
-    
-    const gradientClass = AGENT_GRADIENTS[agent.key] || 'from-slate-500 to-slate-600'
-    const icon = AGENT_ICONS[agent.key] || <Bot className="w-4 h-4" />
-    
-    return (
-      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${gradientClass} text-white text-xs font-medium mb-2 shadow-sm`}>
-        {icon}
-        <span>{agent.name}</span>
-        <span className="opacity-75">·</span>
-        <span className="opacity-90">{agent.role}</span>
-      </div>
-    )
+    const badgeClass = AGENT_COLORS[agent.key] || 'text-bg-secondary'
+    const icon = AGENT_ICONS[agent.key] || <Bot size={14} />
+    return <span className={`badge ${badgeClass} d-inline-flex align-items-center gap-1 mb-2`}>{icon}<span>{agent.name}</span><span className="opacity-75">·</span><span>{agent.role}</span></span>
   }
 
   const RoutingPanel = ({ routing }: { routing?: RoutingInfo }) => {
     if (!routing) return null
     const confidenceLabel = routing.confidence === 'high' ? 'Высокая' : routing.confidence === 'medium' ? 'Средняя' : 'Низкая'
-    const confidenceClass = routing.confidence === 'high'
-      ? 'bg-green-100 text-green-700 border-green-200'
-      : routing.confidence === 'medium'
-        ? 'bg-amber-100 text-amber-700 border-amber-200'
-        : 'bg-slate-100 text-slate-700 border-slate-200'
-
+    const confidenceClass = routing.confidence === 'high' ? 'text-bg-success' : routing.confidence === 'medium' ? 'text-bg-warning' : 'text-bg-secondary'
     return (
-      <div className="mb-3 rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-indigo-700">
-          <Bot className="h-3.5 w-3.5" />
-          <span>Маршрутизация Мастер-агента</span>
+      <div className="alert alert-light border mb-2 py-2" role="status" aria-live="polite">
+        <div className="small fw-semibold text-uppercase text-secondary mb-1">Маршрутизация Master Agent</div>
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+          <span className="small text-secondary">Выбран агент:</span>
+          <span className="badge text-bg-primary">{routing.selectedAgentName} ({routing.selectedAgentKey})</span>
+          <span className={`badge ${confidenceClass}`}>Уверенность: {confidenceLabel}</span>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-600">Выбран агент:</span>
-          <Badge variant="secondary" className="bg-white text-indigo-700 border-indigo-200">
-            {routing.selectedAgentName} ({routing.selectedAgentKey})
-          </Badge>
-          <Badge variant="secondary" className={`border ${confidenceClass}`}>
-            Уверенность: {confidenceLabel}
-          </Badge>
-        </div>
-        <p className="mt-2 text-xs text-slate-600">
-          Причина: {routing.reason}
-        </p>
-        {routing.matchedSignals && routing.matchedSignals.length > 0 && (
-          <p className="mt-1 text-xs text-slate-500">
-            Сигналы: {routing.matchedSignals.join(', ')}
-          </p>
-        )}
+        <div className="small text-muted">Причина: {routing.reason}</div>
+        {routing.matchedSignals && routing.matchedSignals.length > 0 && <div className="small text-muted mt-1">Сигналы: {routing.matchedSignals.join(', ')}</div>}
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Sidebar */}
-      <div className="w-80 bg-white border-r border-slate-200 flex flex-col shadow-sm">
-        {/* Header */}
-        <div className="p-6 border-b border-slate-100">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-bold text-slate-900">Мастер-агент</h1>
-              <p className="text-xs text-slate-500">service.by</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="secondary" className={apiStatus === 'connected' ? 'bg-green-100 text-green-700' : apiStatus === 'error' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}>
-              <Zap className="w-3 h-3 mr-1" />
-              {apiStatus === 'connected' ? 'OpenRouter' : apiStatus === 'error' ? 'Офлайн' : 'Проверка...'}
-            </Badge>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="p-4 grid grid-cols-3 gap-2 border-b border-slate-100">
-          <div className="text-center p-2 bg-slate-50 rounded-lg">
-            <Users className="w-4 h-4 mx-auto mb-1 text-blue-500" />
-            <p className="text-xs text-slate-500">Агентов</p>
-            <p className="font-semibold text-slate-900">4</p>
-          </div>
-          <div className="text-center p-2 bg-slate-50 rounded-lg">
-            <MessageSquare className="w-4 h-4 mx-auto mb-1 text-purple-500" />
-            <p className="text-xs text-slate-500">Чатов</p>
-            <p className="font-semibold text-slate-900">{messages.length}</p>
-          </div>
-          <div className="text-center p-2 bg-slate-50 rounded-lg">
-            <Target className="w-4 h-4 mx-auto mb-1 text-green-500" />
-            <p className="text-xs text-slate-500">Задач</p>
-            <p className="font-semibold text-slate-900">{messages.filter(m => m.role === 'user').length}</p>
-          </div>
-        </div>
-
-        {/* Model Selector */}
-        <div className="p-4 border-b border-slate-100">
-          <div className="flex items-center gap-2 mb-2">
-            <Cpu className="w-4 h-4 text-slate-400" />
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Модель ИИ</p>
-          </div>
-          
-          {isLoadingModels ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Загрузка...
-            </div>
-          ) : (
-            <Select value={currentModel} onValueChange={handleModelChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Выберите модель" />
-              </SelectTrigger>
-              <SelectContent>
-                {models.map((model) => (
-                  <SelectItem key={model.id} value={model.id}>
-                    <div className="flex items-center gap-2">
-                      <span>{model.name}</span>
-                      <span className="text-xs text-slate-400">({model.provider})</span>
-                      {currentModel === model.id && <Check className="w-3 h-3 text-green-500 ml-auto" />}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-
-        {/* Sources Count */}
-        <div className="p-4 border-b border-slate-100">
-          <div className="flex items-center gap-2 mb-2">
-            <Database className="w-4 h-4 text-slate-400" />
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Источники</p>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-600">
-              {sourcesCount === 0 ? 'Нет источников' : `${sourcesCount} источник${sourcesCount === 1 ? '' : sourcesCount < 5 ? 'а' : 'ов'}`}
-            </span>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Database className="w-4 h-4 mr-1" />
-                  Управление
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Управление источниками информации</DialogTitle>
-                </DialogHeader>
-                <SourcesManager onSourcesChange={loadSourcesCount} />
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-
-        {/* Agents panel */}
-        <div className="p-4 border-b border-slate-100 space-y-2">
-          <div className="flex items-center gap-2 mb-2">
-            <Wrench className="w-4 h-4 text-slate-400" />
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Агенты и настройки</p>
-          </div>
-          {sidebarAgents.map(agent => {
-            const settings = agentSettings[agent.key]
-            const requestsHandled = getAgentMessagesCount(agent.key)
-            return (
-              <div key={agent.key} className="rounded-lg border border-slate-200 p-3 bg-slate-50/70">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-7 h-7 rounded-md flex items-center justify-center text-white ${AGENT_COLORS[agent.key] || 'bg-slate-500'}`}>
-                      {AGENT_ICONS[agent.key]}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-800">{agent.label}</p>
-                      <p className="text-[11px] text-slate-500">{agent.actions}</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className={settings?.is_active === false ? 'text-red-600 border-red-200' : 'text-green-600 border-green-200'}>
-                    {settings?.is_active === false ? 'off' : 'on'}
-                  </Badge>
+    <div className="app-bootstrap">
+      <div className="container-fluid py-3">
+        <div className="row g-3">
+          <aside className="col-12 col-lg-4 col-xl-3" aria-label="Панель управления">
+            <div className="card shadow-sm h-100">
+              <div className="card-header bg-white">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center app-icon"><Bot size={16} /></div>
+                  <div><h1 className="h6 mb-0">Мастер-агент</h1><small className="text-muted">service.by</small></div>
+                  <span className={`badge ms-auto ${apiStatus === 'connected' ? 'text-bg-success' : apiStatus === 'error' ? 'text-bg-danger' : 'text-bg-warning'}`}>{apiStatus === 'connected' ? 'Online' : apiStatus === 'error' ? 'Offline' : 'Checking'}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 mb-2">
-                  <div className="rounded bg-white border border-slate-200 px-2 py-1">
-                    <span className="block text-slate-400">Ответов</span>
-                    <span className="font-semibold text-slate-800">{requestsHandled}</span>
-                  </div>
-                  <div className="rounded bg-white border border-slate-200 px-2 py-1">
-                    <span className="block text-slate-400">Промпт</span>
-                    <span className="font-semibold text-slate-800">{(settings?.custom_prompt || '').trim() ? 'кастом' : 'базовый'}</span>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" className="w-full" onClick={() => openAgentSettings(agent.key)}>
-                  <Settings className="w-3.5 h-3.5 mr-1" />
-                  Настроить агента
-                </Button>
               </div>
-            )
-          })}
-        </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50 mt-auto">
-          <p className="text-xs text-slate-500 text-center">
-            Telegram-канал о ремонте бытовой техники в Беларуси
-          </p>
-        </div>
-      </div>
+              <div className="card-body d-grid gap-3">
+                <section aria-label="Быстрая статистика">
+                  <div className="row g-2">
+                    <div className="col-4"><div className="border rounded p-2 text-center h-100"><Users size={16} className="text-primary mb-1" /><div className="small text-muted">Агентов</div><div className="fw-semibold">4</div></div></div>
+                    <div className="col-4"><div className="border rounded p-2 text-center h-100"><MessageSquare size={16} className="text-secondary mb-1" /><div className="small text-muted">Чатов</div><div className="fw-semibold">{messages.length}</div></div></div>
+                    <div className="col-4"><div className="border rounded p-2 text-center h-100"><Target size={16} className="text-success mb-1" /><div className="small text-muted">Задач</div><div className="fw-semibold">{messages.filter((m) => m.role === 'user').length}</div></div></div>
+                  </div>
+                </section>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Chat Header */}
-        <div className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-amber-500" />
-            <div>
-              <h2 className="font-semibold text-slate-900">Чат с Мастер-агентом</h2>
-              <p className="text-xs text-slate-500">Координатор команды контент-маркетинга</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-slate-600">
-              <Cpu className="w-3 h-3 mr-1" />
-              {getCurrentModelName()}
-            </Badge>
-            
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Настройки</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
+                <section aria-label="Выбор модели" className="d-grid gap-2">
+                  <label htmlFor="model-select" className="form-label small text-uppercase text-muted mb-0">Модель ИИ</label>
+                  {isLoadingModels ? <div className="d-flex align-items-center text-secondary"><div className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" /><span>Загрузка моделей...</span></div> : (
+                    <select id="model-select" className="form-select" value={currentModel} onChange={(e) => handleModelChange(e.target.value)}>
+                      {models.map((model) => <option key={model.id} value={model.id}>{model.name} ({model.provider})</option>)}
+                    </select>
+                  )}
+                </section>
+
+                <section aria-label="Источники" className="d-flex align-items-center justify-content-between">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Модель ИИ</label>
-                    <Select value={currentModel} onValueChange={handleModelChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {models.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            <div className="flex items-center gap-2">
-                              <span>{model.name}</span>
-                              <span className="text-xs text-slate-400">({model.provider})</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="small text-uppercase text-muted">Источники</div>
+                    <div className="small">{sourcesCount === 0 ? 'Нет источников' : `${sourcesCount} источник${sourcesCount === 1 ? '' : sourcesCount < 5 ? 'а' : 'ов'}`}</div>
                   </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
+                  <button type="button" className="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#sourcesModal"><Database size={14} className="me-1" />Управление</button>
+                </section>
 
-        {/* Error Alert */}
-        {error && (
-          <Alert variant="destructive" className="m-4 mb-0">
-            <AlertCircle className="w-4 h-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+                <section aria-label="Агенты и настройки" className="d-grid gap-2">
+                  <div className="d-flex align-items-center gap-2"><Wrench size={14} className="text-muted" /><span className="small text-uppercase text-muted">Агенты и настройки</span></div>
+                  {sidebarAgents.map((agent) => {
+                    const settings = agentSettings[agent.key]
+                    const requestsHandled = getAgentMessagesCount(agent.key)
+                    const colorClass = AGENT_COLORS[agent.key] || 'text-bg-secondary'
+                    return (
+                      <article key={agent.key} className="border rounded p-2" aria-label={`Агент ${agent.label}`}>
+                        <div className="d-flex align-items-start justify-content-between gap-2">
+                          <div className="d-flex align-items-start gap-2">
+                            <div className={`rounded d-flex align-items-center justify-content-center text-white agent-badge ${colorClass}`}>{AGENT_ICONS[agent.key]}</div>
+                            <div><div className="fw-semibold small">{agent.label}</div><div className="text-muted small">{agent.actions}</div></div>
+                          </div>
+                          <span className={`badge ${settings?.is_active === false ? 'text-bg-danger' : 'text-bg-success'}`}>{settings?.is_active === false ? 'off' : 'on'}</span>
+                        </div>
+                        <div className="row g-2 mt-1">
+                          <div className="col-6"><div className="border rounded p-1"><div className="text-muted very-small">Ответов</div><div className="small fw-semibold">{requestsHandled}</div></div></div>
+                          <div className="col-6"><div className="border rounded p-1"><div className="text-muted very-small">Промпт</div><div className="small fw-semibold">{(settings?.custom_prompt || '').trim() ? 'кастом' : 'базовый'}</div></div></div>
+                        </div>
+                        <button type="button" className="btn btn-outline-secondary btn-sm w-100 mt-2" onClick={() => openSettingsModal(agent.key)}><Settings size={14} className="me-1" />Настроить агента</button>
+                      </article>
+                    )
+                  })}
+                </section>
+              </div>
 
-        {/* Messages */}
-        <div 
-          className="flex-1 overflow-y-auto p-6" 
-          ref={scrollRef}
-          style={{ scrollBehavior: 'smooth' }}
-        >
-          <div className="space-y-6 max-w-4xl mx-auto">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-              >
-                <Avatar className={`w-10 h-10 flex-shrink-0 ${message.role === 'assistant' && message.agent ? AGENT_COLORS[message.agent.key] || 'bg-gradient-to-br from-blue-600 to-purple-600' : message.role === 'assistant' ? 'bg-gradient-to-br from-blue-600 to-purple-600' : 'bg-slate-200'}`}>
-                  <AvatarFallback className="text-white">
-                    {message.role === 'assistant' ? (message.agent ? AGENT_ICONS[message.agent.key] : <Bot className="w-5 h-5" />) : <User className="w-5 h-5 text-slate-600" />}
-                  </AvatarFallback>
-                </Avatar>
-                <div className={`flex-1 ${message.role === 'user' ? 'text-right' : ''}`}>
-                  <div className={`inline-block max-w-[80%] ${message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200'} rounded-2xl px-5 py-3 shadow-sm text-left`}>
-                    {message.role === 'assistant' && message.agent && (
-                      <AgentBadge agent={message.agent} />
-                    )}
-                    {message.role === 'assistant' && (
-                      <RoutingPanel routing={message.routing} />
-                    )}
-                    <div className={`text-sm whitespace-pre-line ${message.role === 'user' ? 'text-white' : 'text-slate-700'}`}>
-                      {renderMessageContent(message.content)}
+              <div className="card-footer bg-light small text-muted text-center">Telegram-канал о ремонте бытовой техники в Беларуси</div>
+            </div>
+          </aside>
+
+          <main className="col-12 col-lg-8 col-xl-9" aria-label="Чат мастер-агента">
+            <div className="card shadow-sm app-chat-card">
+              <div className="card-header bg-white d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2"><Sparkles size={18} className="text-warning" /><div><h2 className="h6 mb-0">Чат с Мастер-агентом</h2><small className="text-muted">Координатор команды контент-маркетинга</small></div></div>
+                <span className="badge text-bg-light border"><Cpu size={12} className="me-1" />{getCurrentModelName()}</span>
+              </div>
+
+              {error && <div className="alert alert-danger rounded-0 mb-0" role="alert"><AlertCircle size={16} className="me-2" />{error}</div>}
+
+              <div className="card-body app-chat-scroll" ref={scrollRef}>
+                <div className="d-grid gap-3">
+                  {messages.map((message) => (
+                    <div key={message.id} className={`d-flex gap-2 ${message.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}>
+                      {message.role === 'assistant' && <div className="rounded-circle text-bg-dark d-flex align-items-center justify-content-center app-avatar">{message.agent ? AGENT_ICONS[message.agent.key] : <Bot size={16} />}</div>}
+                      <div className={`app-message ${message.role === 'user' ? 'app-message-user' : 'app-message-assistant'}`}>
+                        {message.role === 'assistant' && message.agent && <AgentBadge agent={message.agent} />}
+                        {message.role === 'assistant' && <RoutingPanel routing={message.routing} />}
+                        <div className="small">{renderMessageContent(message.content)}</div>
+                        <div className="text-muted very-small mt-2">{formatTime(message.timestamp)}</div>
+                      </div>
+                      {message.role === 'user' && <div className="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center app-avatar"><User size={16} /></div>}
                     </div>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1 px-1">
-                    {formatTime(message.timestamp)}
-                  </p>
+                  ))}
+                  {isTyping && (
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="rounded-circle text-bg-dark d-flex align-items-center justify-content-center app-avatar"><Bot size={16} /></div>
+                      <div className="border rounded p-2 bg-body-tertiary">
+                        <div className="spinner-grow spinner-grow-sm text-secondary me-1" role="status" aria-hidden="true" />
+                        <div className="spinner-grow spinner-grow-sm text-secondary me-1" role="status" aria-hidden="true" />
+                        <div className="spinner-grow spinner-grow-sm text-secondary" role="status" aria-hidden="true" />
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
                 </div>
               </div>
-            ))}
-            {isTyping && (
-              <div className="flex gap-4">
-                <Avatar className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-blue-600 to-purple-600">
-                  <AvatarFallback className="text-white">
-                    <Bot className="w-5 h-5" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="bg-white border border-slate-200 rounded-2xl px-5 py-3 shadow-sm">
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                </div>
-              </div>
-            )}
-            {/* Элемент для авто-скролла */}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
 
-        {/* Input Area */}
-        <div className="p-6 bg-white border-t border-slate-200">
-          <div className="max-w-4xl mx-auto flex gap-3">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-              placeholder="Опишите задачу..."
-              className="flex-1 h-12 text-sm border-slate-200 focus-visible:ring-blue-500"
-              disabled={isTyping}
-            />
-            <Button 
-              onClick={handleSend}
-              disabled={!input.trim() || isTyping}
-              className="h-12 px-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-            >
-              {isTyping ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4 mr-2" />
-              )}
-              Отправить
-            </Button>
-          </div>
-          <div className="flex items-center justify-center gap-4 mt-3">
-            <p className="text-xs text-slate-400">
-              Мастер-агент использует {sourcesCount} источник{sourcesCount === 1 ? '' : sourcesCount < 5 ? 'а' : 'ов'} для создания контента
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700"
-              onClick={async () => {
-                if (!confirm('Очистить историю чата?')) return
-                try {
-                  await fetch(`${API_URL}/api/chat/history`, { method: 'DELETE' })
-                } catch {
-                  // ignore network errors; still clear local state
-                }
-                localStorage.removeItem(STORAGE_KEY)
-                setMessages(prev => [prev[0]])
-                toast.success('История очищена')
-              }}
-            >
-              <Trash2 className="w-3.5 h-3.5 mr-1" />
-              Очистить историю
-            </Button>
-            {currentModel && (
-              <Badge variant="outline" className="text-xs">
-                <Cpu className="w-3 h-3 mr-1" />
-                {getCurrentModelName()}
-              </Badge>
-            )}
+              <div className="card-footer bg-white">
+                <form className="row g-2 align-items-center" onSubmit={(e) => { e.preventDefault(); handleSend() }}>
+                  <div className="col">
+                    <label htmlFor="chat-input" className="visually-hidden">Сообщение</label>
+                    <input id="chat-input" className="form-control" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Опишите задачу..." disabled={isTyping} />
+                  </div>
+                  <div className="col-auto">
+                    <button type="submit" className="btn btn-primary" disabled={!input.trim() || isTyping}>
+                      {isTyping ? <Loader2 size={16} className="me-1 app-spin" /> : <Send size={16} className="me-1" />}
+                      Отправить
+                    </button>
+                  </div>
+                </form>
+                <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+                  <small className="text-muted">Мастер-агент использует {sourcesCount} источник{sourcesCount === 1 ? '' : sourcesCount < 5 ? 'а' : 'ов'}</small>
+                  <div className="d-flex align-items-center gap-2">
+                    <button type="button" className="btn btn-outline-danger btn-sm" onClick={clearHistory}><Trash2 size={14} className="me-1" />Очистить историю</button>
+                    {currentModel && <span className="badge text-bg-light border">{getCurrentModelName()}</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <div className="modal fade" id="sourcesModal" tabIndex={-1} aria-labelledby="sourcesModalLabel" aria-hidden="true">
+        <div className="modal-dialog modal-xl modal-dialog-scrollable">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2 className="modal-title fs-5" id="sourcesModalLabel">Управление источниками информации</h2>
+              <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Закрыть" />
+            </div>
+            <div className="modal-body"><SourcesManager onSourcesChange={loadSourcesCount} /></div>
           </div>
         </div>
       </div>
 
-      <Dialog open={Boolean(activeSettingsAgent)} onOpenChange={(open) => !open && setActiveSettingsAgent(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Настройки агента {activeSettingsAgent || ''}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50">
-              <div>
-                <p className="text-sm font-medium text-slate-800">Статус агента</p>
-                <p className="text-xs text-slate-500">Отключенный агент не будет выбран Мастер-агентом</p>
+      <div className="modal fade" id="agentSettingsModal" tabIndex={-1} aria-labelledby="agentSettingsModalLabel" aria-hidden="true">
+        <div className="modal-dialog modal-lg modal-dialog-scrollable">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2 className="modal-title fs-5" id="agentSettingsModalLabel">Настройки агента {activeSettingsAgent || ''}</h2>
+              <button type="button" className="btn-close" onClick={closeSettingsModal} aria-label="Закрыть" />
+            </div>
+            <div className="modal-body">
+              <div className="d-grid gap-3">
+                <div className="d-flex justify-content-between align-items-center border rounded p-2">
+                  <div><div className="fw-semibold">Статус агента</div><small className="text-muted">Отключенный агент не будет выбран Master Agent</small></div>
+                  <button type="button" className={`btn btn-sm ${agentForm.is_active ? 'btn-success' : 'btn-outline-secondary'}`} onClick={() => setAgentForm((prev) => ({ ...prev, is_active: !prev.is_active }))}>{agentForm.is_active ? 'Включен' : 'Выключен'}</button>
+                </div>
+                <div>
+                  <label htmlFor="agent-custom-prompt" className="form-label">Кастомный промпт</label>
+                  <textarea id="agent-custom-prompt" className="form-control" rows={4} placeholder="Например: всегда предлагай 3 варианта заголовка..." value={agentForm.custom_prompt} onChange={(e) => setAgentForm((prev) => ({ ...prev, custom_prompt: e.target.value }))} />
+                </div>
+                <div>
+                  <label htmlFor="agent-clarifications" className="form-label">Уточнения</label>
+                  <textarea id="agent-clarifications" className="form-control" rows={3} placeholder="Тон, формат, стиль, требования к структуре..." value={agentForm.clarifications} onChange={(e) => setAgentForm((prev) => ({ ...prev, clarifications: e.target.value }))} />
+                </div>
+                <div>
+                  <label htmlFor="agent-goals" className="form-label">Цели</label>
+                  <textarea id="agent-goals" className="form-control" rows={3} placeholder="Что агент должен достигать в каждом ответе..." value={agentForm.goals} onChange={(e) => setAgentForm((prev) => ({ ...prev, goals: e.target.value }))} />
+                </div>
+                <div>
+                  <label htmlFor="agent-constraints" className="form-label">Ограничения</label>
+                  <textarea id="agent-constraints" className="form-control" rows={3} placeholder="Что нельзя делать, какие рамки соблюдать..." value={agentForm.constraints} onChange={(e) => setAgentForm((prev) => ({ ...prev, constraints: e.target.value }))} />
+                </div>
               </div>
-              <Button
-                variant={agentForm.is_active ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setAgentForm(prev => ({ ...prev, is_active: !prev.is_active }))}
-              >
-                {agentForm.is_active ? 'Включен' : 'Выключен'}
-              </Button>
             </div>
-
-            <div>
-              <Label>Кастомный промпт</Label>
-              <Textarea
-                rows={4}
-                placeholder="Например: всегда предлагай 3 варианта заголовка..."
-                value={agentForm.custom_prompt}
-                onChange={e => setAgentForm(prev => ({ ...prev, custom_prompt: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <Label>Уточнения</Label>
-              <Textarea
-                rows={3}
-                placeholder="Тон, формат, стиль, требования к структуре..."
-                value={agentForm.clarifications}
-                onChange={e => setAgentForm(prev => ({ ...prev, clarifications: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <Label>Цели</Label>
-              <Textarea
-                rows={3}
-                placeholder="Что агент должен достигать в каждом ответе..."
-                value={agentForm.goals}
-                onChange={e => setAgentForm(prev => ({ ...prev, goals: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <Label>Ограничения</Label>
-              <Textarea
-                rows={3}
-                placeholder="Что нельзя делать, какие рамки соблюдать..."
-                value={agentForm.constraints}
-                onChange={e => setAgentForm(prev => ({ ...prev, constraints: e.target.value }))}
-              />
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline-secondary" onClick={closeSettingsModal}>Отмена</button>
+              <button type="button" className="btn btn-primary" onClick={saveAgentSettings} disabled={isSavingAgent}>
+                {isSavingAgent && <Loader2 size={14} className="me-1 app-spin" />}
+                Сохранить
+              </button>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveSettingsAgent(null)}>
-              Отмена
-            </Button>
-            <Button onClick={saveAgentSettings} disabled={isSavingAgent}>
-              {isSavingAgent ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Сохранить
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
+
+      <Toaster richColors position="top-right" />
     </div>
   )
 }
