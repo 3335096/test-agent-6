@@ -6,10 +6,7 @@ import {
   User, 
   Sparkles, 
   PenTool, 
-  Search, 
-  Palette, 
   Calendar, 
-  TrendingUp, 
   Edit3,
   MessageSquare,
   Users,
@@ -84,30 +81,21 @@ interface Source {
 const AGENT_ICONS: Record<string, React.ReactNode> = {
   'CONTENT_CREATOR': <PenTool className="w-5 h-5" />,
   'EDITOR': <Edit3 className="w-5 h-5" />,
-  'ANALYST': <Search className="w-5 h-5" />,
-  'DESIGNER': <Palette className="w-5 h-5" />,
-  'SMM_MANAGER': <Calendar className="w-5 h-5" />,
-  'GROWTH_MANAGER': <TrendingUp className="w-5 h-5" />,
+  'SM_MANAGER': <Calendar className="w-5 h-5" />,
   'MASTER_AGENT': <Bot className="w-5 h-5" />
 }
 
 const AGENT_COLORS: Record<string, string> = {
   'CONTENT_CREATOR': 'bg-blue-500',
   'EDITOR': 'bg-purple-500',
-  'ANALYST': 'bg-green-500',
-  'DESIGNER': 'bg-pink-500',
-  'SMM_MANAGER': 'bg-orange-500',
-  'GROWTH_MANAGER': 'bg-red-500',
+  'SM_MANAGER': 'bg-orange-500',
   'MASTER_AGENT': 'bg-indigo-500'
 }
 
 const AGENT_GRADIENTS: Record<string, string> = {
   'CONTENT_CREATOR': 'from-blue-500 to-blue-600',
   'EDITOR': 'from-purple-500 to-purple-600',
-  'ANALYST': 'from-green-500 to-green-600',
-  'DESIGNER': 'from-pink-500 to-pink-600',
-  'SMM_MANAGER': 'from-orange-500 to-orange-600',
-  'GROWTH_MANAGER': 'from-red-500 to-red-600',
+  'SM_MANAGER': 'from-orange-500 to-orange-600',
   'MASTER_AGENT': 'from-indigo-500 to-indigo-600'
 }
 
@@ -125,7 +113,9 @@ const welcomeMessage = `🤖 АГЕНТ: MASTER_AGENT
 
 Привет! Я Мастер-агент для твоего Telegram-канала service.by
 
-Я координирую команду из 6 специализированных агентов. При создании контента я использую информацию из настроенных источников.
+Я координирую команду из 3 специализированных агентов: Content Agent, Editor Agent и SM Agent.
+
+При создании контента я использую информацию из настроенных источников.
 
 Просто опиши задачу — я сам определю, кто лучше справится, и верну готовый результат. Начнём?`
 
@@ -655,7 +645,7 @@ function App() {
           <div className="text-center p-2 bg-slate-50 rounded-lg">
             <Users className="w-4 h-4 mx-auto mb-1 text-blue-500" />
             <p className="text-xs text-slate-500">Агентов</p>
-            <p className="font-semibold text-slate-900">6</p>
+            <p className="font-semibold text-slate-900">4</p>
           </div>
           <div className="text-center p-2 bg-slate-50 rounded-lg">
             <MessageSquare className="w-4 h-4 mx-auto mb-1 text-purple-500" />

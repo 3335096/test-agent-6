@@ -21,57 +21,43 @@ const AVAILABLE_MODELS = [
   { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3', provider: 'DeepSeek' }
 ];
 
-// Информация об агентах
+// Информация об агентах (мастер + 3 специализированных)
 const AGENTS_INFO = {
   'CONTENT_CREATOR': {
-    name: 'Content Creator',
+    name: 'Content Agent',
     role: 'Контент',
     description: 'Создание постов, сценариев, рубрик',
     color: '#3b82f6',
     icon: 'PenTool'
   },
   'EDITOR': {
-    name: 'Editor',
+    name: 'Editor Agent',
     role: 'Редактура',
     description: 'Вычитка, редактура, стиль',
     color: '#8b5cf6',
     icon: 'Edit3'
   },
-  'ANALYST': {
-    name: 'Analyst',
-    role: 'Аналитика',
-    description: 'Исследования, метрики, тренды',
-    color: '#22c55e',
-    icon: 'Search'
-  },
-  'DESIGNER': {
-    name: 'Designer',
-    role: 'Дизайн',
-    description: 'Визуалы, инфографика, креативы',
-    color: '#ec4899',
-    icon: 'Palette'
-  },
-  'SMM_MANAGER': {
-    name: 'SMM Manager',
-    role: 'SMM',
-    description: 'Планирование, модерация, реклама',
+  'SM_MANAGER': {
+    name: 'SM Agent',
+    role: 'Social Media',
+    description: 'Публикации, контент-план, модерация',
     color: '#f97316',
     icon: 'Calendar'
-  },
-  'GROWTH_MANAGER': {
-    name: 'Growth Manager',
-    role: 'Рост',
-    description: 'Стратегия, лидогенерация',
-    color: '#ef4444',
-    icon: 'TrendingUp'
   },
   'MASTER_AGENT': {
     name: 'Master Agent',
     role: 'Координатор',
-    description: 'Координация команды',
+    description: 'Распределяет задачи между агентами',
     color: '#6366f1',
     icon: 'Bot'
   }
+};
+
+const AGENT_ALIASES = {
+  SMM_MANAGER: 'SM_MANAGER',
+  SM_AGENT: 'SM_MANAGER',
+  SOCIAL_MEDIA_MANAGER: 'SM_MANAGER',
+  CONTENT: 'CONTENT_CREATOR'
 };
 
 app.use(cors());
@@ -116,14 +102,17 @@ ${sourcesContext}
 СТРУКТУРА КОМАНДЫ
 ═══════════════════════════════════════════════════════════════
 
-У тебя есть 6 специализированных агентов:
+У тебя есть 3 специализированных агента:
 
 1. CONTENT_CREATOR — создание постов, сценариев, рубрик
-2. EDITOR — вычитка, редактура, согласование стиля  
-3. ANALYST — исследование рынка, конкурентов, трендов
-4. DESIGNER — визуалы, шаблоны, инфографика, креативы
-5. SMM_MANAGER — планирование публикаций, модерация
-6. GROWTH_MANAGER — стратегия роста, лидогенерация
+2. EDITOR — вычитка, редактура, согласование стиля
+3. SM_MANAGER — публикации, контент-план, модерация
+
+Алгоритм работы:
+1) Проанализируй задачу пользователя.
+2) Выбери, кому делегировать задачу (одному из 3 агентов).
+3) Дай ответ от выбранного агента.
+4) Если задача затрагивает несколько ролей, можешь ответить как MASTER_AGENT и кратко указать вклад каждого.
 
 ═══════════════════════════════════════════════════════════════
 ВАЖНО: ФОРМАТ ОТВЕТА
@@ -136,10 +125,7 @@ ${sourcesContext}
 Где [ИМЯ_АГЕНТА] — одно из:
 - CONTENT_CREATOR
 - EDITOR
-- ANALYST
-- DESIGNER
-- SMM_MANAGER
-- GROWTH_MANAGER
+- SM_MANAGER
 - MASTER_AGENT (если отвечаешь сам)
 
 Пример:
@@ -152,7 +138,8 @@ ${sourcesContext}
 function detectAgent(content) {
   const match = content.match(/🤖\s*АГЕНТ:\s*(\w+)/i);
   if (match) {
-    const agentKey = match[1].toUpperCase();
+    const rawKey = match[1].toUpperCase();
+    const agentKey = AGENT_ALIASES[rawKey] || rawKey;
     if (AGENTS_INFO[agentKey]) {
       return {
         key: agentKey,
@@ -163,23 +150,21 @@ function detectAgent(content) {
   
   // Fallback: ищем по ключевым словам
   const lower = content.toLowerCase();
-  if (lower.includes('content creator') || lower.includes('пост') || lower.includes('текст')) {
+  if (lower.includes('content creator') || lower.includes('content agent') || lower.includes('пост') || lower.includes('текст')) {
     return { key: 'CONTENT_CREATOR', ...AGENTS_INFO['CONTENT_CREATOR'] };
   }
-  if (lower.includes('analyst') || lower.includes('аналитик') || lower.includes('метрик')) {
-    return { key: 'ANALYST', ...AGENTS_INFO['ANALYST'] };
-  }
-  if (lower.includes('designer') || lower.includes('дизайн') || lower.includes('баннер')) {
-    return { key: 'DESIGNER', ...AGENTS_INFO['DESIGNER'] };
-  }
-  if (lower.includes('smm manager') || lower.includes('smm') || lower.includes('план')) {
-    return { key: 'SMM_MANAGER', ...AGENTS_INFO['SMM_MANAGER'] };
-  }
-  if (lower.includes('growth manager') || lower.includes('growth') || lower.includes('подписчик')) {
-    return { key: 'GROWTH_MANAGER', ...AGENTS_INFO['GROWTH_MANAGER'] };
-  }
-  if (lower.includes('editor') || lower.includes('редактор') || lower.includes('вычитка')) {
+  if (lower.includes('editor') || lower.includes('редактор') || lower.includes('вычитка') || lower.includes('редактура')) {
     return { key: 'EDITOR', ...AGENTS_INFO['EDITOR'] };
+  }
+  if (
+    lower.includes('sm manager') ||
+    lower.includes('sm agent') ||
+    lower.includes('smm') ||
+    lower.includes('соцсет') ||
+    lower.includes('контент-план') ||
+    lower.includes('публикац')
+  ) {
+    return { key: 'SM_MANAGER', ...AGENTS_INFO['SM_MANAGER'] };
   }
   
   return { key: 'MASTER_AGENT', ...AGENTS_INFO['MASTER_AGENT'] };
