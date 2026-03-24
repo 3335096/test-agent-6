@@ -11,7 +11,6 @@ import {
   Calendar, 
   TrendingUp, 
   Edit3,
-  ChevronRight,
   MessageSquare,
   Users,
   Target,
@@ -36,9 +35,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
+
 import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
@@ -122,15 +120,6 @@ const SOURCE_TYPE_ICONS: Record<string, React.ReactNode> = {
   'youtube': <Youtube className="w-4 h-4" />,
   'documentation': <BookOpen className="w-4 h-4" />
 }
-
-const agentsList = [
-  { id: 'CONTENT_CREATOR', name: 'Content Creator', role: 'Контент', description: 'Посты, сценарии, рубрики', icon: <PenTool className="w-4 h-4" />, color: 'bg-blue-500' },
-  { id: 'EDITOR', name: 'Editor', role: 'Редактура', description: 'Вычитка, стиль', icon: <Edit3 className="w-4 h-4" />, color: 'bg-purple-500' },
-  { id: 'ANALYST', name: 'Analyst', role: 'Аналитика', description: 'Исследования, метрики', icon: <Search className="w-4 h-4" />, color: 'bg-green-500' },
-  { id: 'DESIGNER', name: 'Designer', role: 'Дизайн', description: 'Визуалы, креативы', icon: <Palette className="w-4 h-4" />, color: 'bg-pink-500' },
-  { id: 'SMM_MANAGER', name: 'SMM Manager', role: 'SMM', description: 'Планирование, реклама', icon: <Calendar className="w-4 h-4" />, color: 'bg-orange-500' },
-  { id: 'GROWTH_MANAGER', name: 'Growth Manager', role: 'Рост', description: 'Стратегия, лиды', icon: <TrendingUp className="w-4 h-4" />, color: 'bg-red-500' }
-]
 
 const welcomeMessage = `🤖 АГЕНТ: MASTER_AGENT
 
@@ -738,29 +727,6 @@ function App() {
             </Dialog>
           </div>
         </div>
-
-        {/* Agents List */}
-        <ScrollArea className="flex-1 p-4">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Команда агентов</p>
-          <div className="space-y-2">
-            {agentsList.map(agent => (
-              <Card key={agent.id} className="cursor-pointer hover:shadow-md transition-shadow border-slate-100">
-                <CardContent className="p-3">
-                  <div className="flex items-start gap-3">
-                    <div className={`w-8 h-8 rounded-lg ${agent.color} flex items-center justify-center flex-shrink-0 text-white`}>
-                      {agent.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-slate-900">{agent.name}</p>
-                      <p className="text-xs text-slate-500">{agent.description}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </ScrollArea>
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-100 bg-slate-50">
