@@ -2,6 +2,17 @@
   animation: app-spin-keyframes 0.9s linear infinite;
 }
 
+.app-theme-transition,
+.app-theme-transition * {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    fill 180ms ease,
+    stroke 180ms ease,
+    box-shadow 180ms ease !important;
+}
+
 @keyframes app-spin-keyframes {
   to {
     transform: rotate(360deg);

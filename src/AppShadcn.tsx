@@ -12,6 +12,7 @@ import {
   Globe,
   Loader2,
   MessageSquare,
+  Moon,
   Newspaper,
   PanelLeft,
   PenTool,
@@ -21,6 +22,7 @@ import {
   Send,
   Settings,
   Sparkles,
+  Sun,
   Target,
   Trash2,
   User,
@@ -28,7 +30,8 @@ import {
   Wrench,
   Youtube
 } from 'lucide-react'
-import { Toaster, toast } from 'sonner'
+import { toast } from 'sonner'
+import { useTheme } from 'next-themes'
 import { cn } from './lib/utils'
 import { Alert, AlertDescription } from './components/ui/alert'
 import { Avatar, AvatarFallback } from './components/ui/avatar'
@@ -55,6 +58,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from './components/ui/sheet'
 import { Switch } from './components/ui/switch'
 import { Textarea } from './components/ui/textarea'
+import { Toaster } from './components/ui/sonner'
 
 interface Message {
   id: string
@@ -119,10 +123,23 @@ const AGENT_ICONS: Record<string, ReactNode> = {
 }
 
 const AGENT_BADGE_CLASSES: Record<string, string> = {
-  CONTENT_CREATOR: 'bg-blue-600 text-white',
-  EDITOR: 'bg-violet-600 text-white',
-  SMM_MANAGER: 'bg-amber-500 text-amber-950',
+  CONTENT_CREATOR: 'bg-blue-600/90 text-white',
+  EDITOR: 'bg-violet-600/90 text-white',
+  SMM_MANAGER: 'bg-amber-500/90 text-amber-950',
   MASTER_AGENT: 'bg-slate-900 text-white'
+}
+
+const STATUS_TONE_CLASSES = {
+  success: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+  warning: 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  danger: 'border-red-500/30 bg-red-500/15 text-red-700 dark:text-red-300',
+  neutral: 'border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300'
+} as const
+
+const API_STATUS_META: Record<'checking' | 'connected' | 'error', { label: string; tone: keyof typeof STATUS_TONE_CLASSES }> = {
+  checking: { label: 'Checking', tone: 'warning' },
+  connected: { label: 'Online', tone: 'success' },
+  error: { label: 'Offline', tone: 'danger' }
 }
 
 const SOURCE_TYPE_ICONS: Record<string, ReactNode> = {
@@ -458,7 +475,9 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
 }
 
 function AppShadcn() {
+  const { resolvedTheme, setTheme } = useTheme()
   const STORAGE_KEY = 'serviceby-chat-history-v1'
+  const [isThemeReady, setIsThemeReady] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -509,6 +528,10 @@ function AppShadcn() {
     loadSourcesCount()
     loadAgentSettings()
     loadHistory()
+  }, [])
+
+  useEffect(() => {
+    setIsThemeReady(true)
   }, [])
 
   useEffect(() => {
@@ -832,6 +855,12 @@ function AppShadcn() {
     : apiStatus === 'error'
       ? 'bg-red-600 text-white'
       : 'bg-amber-500 text-amber-950'
+  const apiStatusMeta = API_STATUS_META[apiStatus]
+
+  const toggleTheme = () => {
+    const currentTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
+    setTheme(currentTheme === 'dark' ? 'light' : 'dark')
+  }
 
   const renderSidebarContent = (isMobile = false) => (
     <div className="space-y-4">
@@ -956,6 +985,13 @@ function AppShadcn() {
                 <PanelLeft className="h-4 w-4" />
                 Панель
               </Button>
+              <Button type="button" variant="outline" size="icon-sm" onClick={toggleTheme} aria-label="Переключить тему">
+                {isThemeReady && resolvedTheme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
               <Button type="button" variant="outline" size="icon-sm" onClick={() => openSettingsModal()} aria-label="Настройки агентов">
                 <Settings className="h-4 w-4" />
               </Button>
@@ -978,7 +1014,14 @@ function AppShadcn() {
                   <Button type="button" variant="outline" size="icon-sm" className="ml-auto" onClick={() => openSettingsModal()} aria-label="Настройки агентов">
                     <Settings className="h-4 w-4" />
                   </Button>
-                  <Badge className={statusBadgeClass}>{apiStatus === 'connected' ? 'Online' : apiStatus === 'error' ? 'Offline' : 'Checking'}</Badge>
+                  <Button type="button" variant="outline" size="icon-sm" onClick={toggleTheme} aria-label="Переключить тему">
+                    {isThemeReady && resolvedTheme === 'dark' ? (
+                      <Sun className="h-4 w-4" />
+                    ) : (
+                      <Moon className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Badge className={statusBadgeClass}>{apiStatusMeta.label}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="flex-1 overflow-y-auto pt-4">
@@ -1001,7 +1044,7 @@ function AppShadcn() {
                       <p className="text-xs text-muted-foreground">Координатор команды контент-маркетинга</p>
                     </div>
                   </div>
-                  <Badge className={statusBadgeClass}>{apiStatus === 'connected' ? 'Online' : apiStatus === 'error' ? 'Offline' : 'Checking'}</Badge>
+                  <Badge className={statusBadgeClass}>{apiStatusMeta.label}</Badge>
                 </div>
               </CardHeader>
 
