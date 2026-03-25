@@ -46,10 +46,41 @@ body {
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
 }
 
+.app-icon-only-btn {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-mobile-topbar .card-body {
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
 .source-icon {
   width: 2rem;
   height: 2rem;
   background-color: #f8fafc;
+}
+
+.app-source-list-item {
+  border-radius: 0.75rem;
+  margin-bottom: 0.55rem;
+  border: 1px solid #e5e7eb;
+}
+
+.app-source-list .list-group-item:last-child {
+  margin-bottom: 0;
+}
+
+.app-source-link {
+  word-break: break-all;
+}
+
+.app-source-form-card {
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
 }
 
 .agent-badge {
@@ -140,6 +171,30 @@ body {
   margin-bottom: 0;
 }
 
+.app-agent-settings-list .list-group-item {
+  border-radius: 0.7rem;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 0.45rem;
+}
+
+.app-agent-settings-list .list-group-item.active {
+  background-color: #eef4ff;
+  border-color: #93c5fd;
+  color: #1e3a8a;
+}
+
+.app-agent-settings-pane {
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.offcanvas {
+  border-right: 1px solid #e2e8f0;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
 .app-input-form .form-control,
 .app-input-form .btn {
   height: 2.75rem;
@@ -223,5 +278,41 @@ body {
 
   .app-input-form .btn {
     min-width: 0;
+  }
+
+  .app-chat-action-btn {
+    width: 100%;
+  }
+
+  .app-chat-card .card-header,
+  .app-chat-card .card-footer {
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .app-icon {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .app-message {
+    max-width: 96%;
+    padding: 0.7rem 0.75rem;
+  }
+
+  .app-avatar {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+
+  .app-chat-scroll {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .offcanvas {
+    width: min(92vw, 360px);
   }
 }

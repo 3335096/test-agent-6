@@ -26,7 +26,8 @@ import {
   Rss,
   Youtube,
   Newspaper,
-  Wrench
+  Wrench,
+  PanelLeft
 } from 'lucide-react'
 import { Toaster, toast } from 'sonner'
 
@@ -133,6 +134,7 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
     description: '',
     tags: ''
   })
+  const [formErrors, setFormErrors] = useState<{ name?: string; url?: string }>({})
 
   const loadSources = async () => {
     try {
@@ -154,9 +156,29 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const nextErrors: { name?: string; url?: string } = {}
+    const trimmedName = formData.name.trim()
+    const trimmedUrl = formData.url.trim()
+
+    if (!trimmedName) {
+      nextErrors.name = 'Укажите название источника'
+    }
+
+    try {
+      new URL(trimmedUrl)
+    } catch {
+      nextErrors.url = 'Укажите корректный URL (например, https://example.com)'
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFormErrors(nextErrors)
+      return
+    }
 
     const payload = {
       ...formData,
+      name: trimmedName,
+      url: trimmedUrl,
       tags: formData.tags.split(',').map((t) => t.trim()).filter(Boolean)
     }
 
@@ -173,6 +195,7 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
         setShowForm(false)
         setEditingSource(null)
         setFormData({ name: '', url: '', type: 'website', category: '', description: '', tags: '' })
+        setFormErrors({})
         loadSources()
         onSourcesChange()
       } else {
@@ -219,12 +242,14 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
       description: source.description,
       tags: (source.tags || []).join(', ')
     })
+    setFormErrors({})
     setShowForm(true)
   }
 
   const openCreateForm = () => {
     setEditingSource(null)
     setFormData({ name: '', url: '', type: 'website', category: '', description: '', tags: '' })
+    setFormErrors({})
     setShowForm(true)
   }
 
@@ -250,21 +275,32 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
           <p className="mb-0 small">Добавьте первый источник информации</p>
         </div>
       ) : (
-        <div className="list-group">
+        <div className="list-group app-source-list">
           {sources.map((source) => (
-            <div key={source.id} className={`list-group-item d-flex align-items-start justify-content-between gap-3 ${source.is_active ? '' : 'opacity-75'}`}>
-              <div className="d-flex align-items-start gap-2">
+            <div key={source.id} className={`list-group-item app-source-list-item d-flex align-items-start justify-content-between gap-3 ${source.is_active ? '' : 'opacity-75'}`}>
+              <div className="d-flex align-items-start gap-2 flex-grow-1">
                 <div className="border rounded d-flex align-items-center justify-content-center source-icon">
                   {SOURCE_TYPE_ICONS[source.type] || <Globe size={16} />}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="d-flex align-items-center gap-2 flex-wrap">
                     <strong className="small">{source.name}</strong>
                     {source.category && <span className="badge text-bg-light">{source.category}</span>}
+                    <span className={`badge ${source.is_active ? 'text-bg-success-subtle text-success-emphasis' : 'text-bg-secondary-subtle text-secondary-emphasis'}`}>
+                      {source.is_active ? 'Активен' : 'Отключен'}
+                    </span>
                   </div>
-                  <a href={source.url} target="_blank" rel="noopener noreferrer" className="small text-decoration-none">
+                  <a href={source.url} target="_blank" rel="noopener noreferrer" className="small text-decoration-none d-inline-flex align-items-center gap-1 app-source-link">
                     {source.url} <ExternalLink size={12} />
                   </a>
+                  {source.description && <div className="small text-muted mt-1">{source.description}</div>}
+                  {!!source.tags?.length && (
+                    <div className="d-flex flex-wrap gap-1 mt-2">
+                      {source.tags.map((tag) => (
+                        <span key={`${source.id}-${tag}`} className="badge text-bg-light">#{tag}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -285,19 +321,26 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
       )}
 
       {showForm && (
-        <div className="card border">
-          <div className="card-body">
+        <div className="card border app-source-form-card">
+          <div className="card-body p-3 p-md-4">
             <h4 className="h6 mb-3">{editingSource ? 'Редактировать источник' : 'Добавить источник'}</h4>
             <form onSubmit={handleSubmit} className="row g-3" noValidate>
-              <div className="col-12">
+              <div className="col-12 col-md-6">
                 <label htmlFor="source-name" className="form-label">Название</label>
-                <input id="source-name" className="form-control" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Например: Habr" required />
+                <input
+                  id="source-name"
+                  className={`form-control ${formErrors.name ? 'is-invalid' : ''}`}
+                  value={formData.name}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value })
+                    if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }))
+                  }}
+                  placeholder="Например: Habr"
+                  required
+                />
+                {formErrors.name && <div className="invalid-feedback">{formErrors.name}</div>}
               </div>
-              <div className="col-12">
-                <label htmlFor="source-url" className="form-label">URL</label>
-                <input id="source-url" type="url" className="form-control" value={formData.url} onChange={(e) => setFormData({ ...formData, url: e.target.value })} placeholder="https://..." required />
-              </div>
-              <div className="col-md-6">
+              <div className="col-12 col-md-3">
                 <label htmlFor="source-type" className="form-label">Тип</label>
                 <select id="source-type" className="form-select" value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
                   <option value="website">Веб-сайт</option>
@@ -308,13 +351,29 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
                   <option value="documentation">Документация</option>
                 </select>
               </div>
-              <div className="col-md-6">
+              <div className="col-12 col-md-3">
                 <label htmlFor="source-category" className="form-label">Категория</label>
                 <input id="source-category" className="form-control" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} placeholder="Например: Технологии" />
               </div>
               <div className="col-12">
+                <label htmlFor="source-url" className="form-label">URL</label>
+                <input
+                  id="source-url"
+                  type="url"
+                  className={`form-control ${formErrors.url ? 'is-invalid' : ''}`}
+                  value={formData.url}
+                  onChange={(e) => {
+                    setFormData({ ...formData, url: e.target.value })
+                    if (formErrors.url) setFormErrors((prev) => ({ ...prev, url: undefined }))
+                  }}
+                  placeholder="https://..."
+                  required
+                />
+                {formErrors.url ? <div className="invalid-feedback">{formErrors.url}</div> : <div className="form-text">Ссылка должна начинаться с http:// или https://</div>}
+              </div>
+              <div className="col-12">
                 <label htmlFor="source-description" className="form-label">Описание</label>
-                <textarea id="source-description" className="form-control" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Краткое описание источника" rows={2} />
+                <textarea id="source-description" className="form-control" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Краткое описание источника" rows={3} />
               </div>
               <div className="col-12">
                 <label htmlFor="source-tags" className="form-label">Теги (через запятую)</label>
@@ -581,7 +640,7 @@ function App() {
     }
   }
 
-  const openSettingsModal = (agentKey: string) => {
+  const openSettingsModal = (agentKey: string = 'MASTER_AGENT') => {
     openAgentSettings(agentKey)
     const element = document.getElementById('agentSettingsModal')
     if (!element || typeof window === 'undefined') return
@@ -617,6 +676,11 @@ function App() {
     { key: 'EDITOR', label: 'Editor Agent', actions: 'Вычитка, стиль, улучшения' },
     { key: 'SMM_MANAGER', label: 'SMM Manager', actions: 'Контент-план, публикации, модерация' }
   ]
+  const settingsAgents = [
+    { key: 'MASTER_AGENT', label: 'Master Agent', role: 'Маршрутизация и координация' },
+    ...sidebarAgents.map((agent) => ({ key: agent.key, label: agent.label, role: agent.actions }))
+  ]
+  const activeAgentMeta = settingsAgents.find((agent) => agent.key === activeSettingsAgent) || settingsAgents[0]
   const formatTime = (date: Date) => date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 
   const renderMessageContent = (content: string) => {
@@ -655,105 +719,154 @@ function App() {
     )
   }
 
+  const renderSidebarContent = (isMobile = false) => (
+    <div className="d-grid gap-3 app-sidebar-body">
+      <section aria-label="Быстрая статистика">
+        <div className="row g-2">
+          <div className="col-4">
+            <div className="rounded app-mini-stat p-2 text-center h-100">
+              <Users size={16} className="text-primary mb-1" />
+              <div className="small text-muted">Агентов</div>
+              <div className="fw-semibold">4</div>
+            </div>
+          </div>
+          <div className="col-4">
+            <div className="rounded app-mini-stat p-2 text-center h-100">
+              <MessageSquare size={16} className="text-secondary mb-1" />
+              <div className="small text-muted">Чатов</div>
+              <div className="fw-semibold">{messages.length}</div>
+            </div>
+          </div>
+          <div className="col-4">
+            <div className="rounded app-mini-stat p-2 text-center h-100">
+              <Target size={16} className="text-success mb-1" />
+              <div className="small text-muted">Задач</div>
+              <div className="fw-semibold">{messages.filter((m) => m.role === 'user').length}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-label="Выбор модели" className="d-grid gap-2">
+        <label htmlFor={isMobile ? 'model-select-mobile' : 'model-select'} className="form-label small text-uppercase text-muted mb-0">Модель ИИ</label>
+        {isLoadingModels ? <div className="d-flex align-items-center text-secondary"><div className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" /><span>Загрузка моделей...</span></div> : (
+          <select id={isMobile ? 'model-select-mobile' : 'model-select'} className="form-select" value={currentModel} onChange={(e) => handleModelChange(e.target.value)}>
+            {models.map((model) => <option key={model.id} value={model.id}>{model.name} ({model.provider})</option>)}
+          </select>
+        )}
+      </section>
+
+      <section aria-label="Источники" className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+        <div>
+          <div className="small text-uppercase text-muted">Источники</div>
+          <div className="small">{sourcesCount === 0 ? 'Нет источников' : `${sourcesCount} источник${sourcesCount === 1 ? '' : sourcesCount < 5 ? 'а' : 'ов'}`}</div>
+        </div>
+        <button type="button" className="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#sourcesModal" data-bs-dismiss={isMobile ? 'offcanvas' : undefined}>
+          <Database size={14} className="me-1" />
+          Управление
+        </button>
+      </section>
+
+      <section aria-label="Агенты и настройки" className="d-grid gap-2">
+        <div className="d-flex align-items-center gap-2">
+          <Wrench size={14} className="text-muted" />
+          <span className="small text-uppercase text-muted">Агенты и настройки</span>
+        </div>
+        {sidebarAgents.map((agent) => {
+          const settings = agentSettings[agent.key]
+          const requestsHandled = getAgentMessagesCount(agent.key)
+          const colorClass = AGENT_COLORS[agent.key] || 'text-bg-secondary'
+          return (
+            <article key={agent.key} className="border rounded p-2 app-agent-card" aria-label={`Агент ${agent.label}`}>
+              <div className="d-flex align-items-start justify-content-between gap-2">
+                <div className="d-flex align-items-start gap-2">
+                  <div className={`rounded d-flex align-items-center justify-content-center text-white agent-badge ${colorClass}`}>{AGENT_ICONS[agent.key]}</div>
+                  <div>
+                    <div className="fw-semibold small">{agent.label}</div>
+                    <div className="text-muted small">{agent.actions}</div>
+                  </div>
+                </div>
+                <div className="d-flex align-items-center gap-1">
+                  <span className={`badge ${settings?.is_active === false ? 'text-bg-danger' : 'text-bg-success'}`}>{settings?.is_active === false ? 'off' : 'on'}</span>
+                  <button type="button" className="btn btn-outline-secondary btn-sm app-icon-only-btn" onClick={() => openSettingsModal(agent.key)} aria-label={`Настроить ${agent.label}`} data-bs-dismiss={isMobile ? 'offcanvas' : undefined}>
+                    <Settings size={13} />
+                  </button>
+                </div>
+              </div>
+              <div className="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                <span className="badge text-bg-light app-compact-badge">Ответов: {requestsHandled}</span>
+                <span className="badge text-bg-light app-compact-badge">Промпт: {(settings?.custom_prompt || '').trim() ? 'кастом' : 'базовый'}</span>
+              </div>
+            </article>
+          )
+        })}
+      </section>
+    </div>
+  )
+
   return (
     <div className="app-bootstrap">
-      <div className="container-fluid py-4 px-3 px-xl-4">
+      <div className="container-fluid py-3 py-md-4 px-2 px-md-3 px-xl-4">
+        <div className="d-lg-none mb-3">
+          <div className="card app-mobile-topbar shadow-sm">
+            <div className="card-body py-2 px-3 d-flex align-items-center justify-content-between gap-2">
+              <div className="d-flex align-items-center gap-2">
+                <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center app-icon">
+                  <Bot size={16} />
+                </div>
+                <div>
+                  <div className="fw-semibold small">Мастер-агент</div>
+                  <small className="text-muted">service.by</small>
+                </div>
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center"
+                  data-bs-toggle="offcanvas"
+                  data-bs-target="#mobileControlPanel"
+                  aria-controls="mobileControlPanel"
+                >
+                  <PanelLeft size={14} className="me-1" />
+                  Панель
+                </button>
+                <button type="button" className="btn btn-outline-secondary btn-sm app-icon-only-btn" onClick={() => openSettingsModal()} aria-label="Настройки агентов">
+                  <Settings size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="row g-3">
-          <aside className="col-12 col-lg-4 col-xl-3" aria-label="Панель управления">
+          <aside className="d-none d-lg-block col-lg-4 col-xl-3" aria-label="Панель управления">
             <div className="card app-shell-card shadow-sm h-100">
               <div className="card-header bg-white">
                 <div className="d-flex align-items-center gap-2">
                   <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center app-icon"><Bot size={16} /></div>
                   <div><h1 className="h6 mb-0">Мастер-агент</h1><small className="text-muted">service.by</small></div>
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary btn-sm app-icon-only-btn"
-                    onClick={() => openSettingsModal('MASTER_AGENT')}
-                    aria-label="Настройки агентов"
-                  >
+                  <button type="button" className="btn btn-outline-secondary btn-sm app-icon-only-btn" onClick={() => openSettingsModal()} aria-label="Настройки агентов">
                     <Settings size={14} />
                   </button>
                   <span className={`badge ms-auto ${apiStatus === 'connected' ? 'text-bg-success' : apiStatus === 'error' ? 'text-bg-danger' : 'text-bg-warning'}`}>{apiStatus === 'connected' ? 'Online' : apiStatus === 'error' ? 'Offline' : 'Checking'}</span>
                 </div>
               </div>
-
-              <div className="card-body d-grid gap-3 app-sidebar-body">
-                <section aria-label="Быстрая статистика">
-                  <div className="row g-2">
-                    <div className="col-4">
-                      <div className="rounded app-mini-stat p-2 text-center h-100">
-                        <Users size={16} className="text-primary mb-1" />
-                        <div className="small text-muted">Агентов</div>
-                        <div className="fw-semibold">4</div>
-                      </div>
-                    </div>
-                    <div className="col-4">
-                      <div className="rounded app-mini-stat p-2 text-center h-100">
-                        <MessageSquare size={16} className="text-secondary mb-1" />
-                        <div className="small text-muted">Чатов</div>
-                        <div className="fw-semibold">{messages.length}</div>
-                      </div>
-                    </div>
-                    <div className="col-4">
-                      <div className="rounded app-mini-stat p-2 text-center h-100">
-                        <Target size={16} className="text-success mb-1" />
-                        <div className="small text-muted">Задач</div>
-                        <div className="fw-semibold">{messages.filter((m) => m.role === 'user').length}</div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <section aria-label="Выбор модели" className="d-grid gap-2">
-                  <label htmlFor="model-select" className="form-label small text-uppercase text-muted mb-0">Модель ИИ</label>
-                  {isLoadingModels ? <div className="d-flex align-items-center text-secondary"><div className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" /><span>Загрузка моделей...</span></div> : (
-                    <select id="model-select" className="form-select" value={currentModel} onChange={(e) => handleModelChange(e.target.value)}>
-                      {models.map((model) => <option key={model.id} value={model.id}>{model.name} ({model.provider})</option>)}
-                    </select>
-                  )}
-                </section>
-
-                <section aria-label="Источники" className="d-flex align-items-center justify-content-between">
-                  <div>
-                    <div className="small text-uppercase text-muted">Источники</div>
-                    <div className="small">{sourcesCount === 0 ? 'Нет источников' : `${sourcesCount} источник${sourcesCount === 1 ? '' : sourcesCount < 5 ? 'а' : 'ов'}`}</div>
-                  </div>
-                  <button type="button" className="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#sourcesModal"><Database size={14} className="me-1" />Управление</button>
-                </section>
-
-                <section aria-label="Агенты и настройки" className="d-grid gap-2">
-                  <div className="d-flex align-items-center gap-2"><Wrench size={14} className="text-muted" /><span className="small text-uppercase text-muted">Агенты и настройки</span></div>
-                  {sidebarAgents.map((agent) => {
-                    const settings = agentSettings[agent.key]
-                    const requestsHandled = getAgentMessagesCount(agent.key)
-                    const colorClass = AGENT_COLORS[agent.key] || 'text-bg-secondary'
-                    return (
-                      <article key={agent.key} className="border rounded p-2 app-agent-card" aria-label={`Агент ${agent.label}`}>
-                        <div className="d-flex align-items-start justify-content-between gap-2">
-                          <div className="d-flex align-items-start gap-2">
-                            <div className={`rounded d-flex align-items-center justify-content-center text-white agent-badge ${colorClass}`}>{AGENT_ICONS[agent.key]}</div>
-                            <div><div className="fw-semibold small">{agent.label}</div><div className="text-muted small">{agent.actions}</div></div>
-                          </div>
-                          <span className={`badge ${settings?.is_active === false ? 'text-bg-danger' : 'text-bg-success'}`}>{settings?.is_active === false ? 'off' : 'on'}</span>
-                        </div>
-                        <div className="d-flex align-items-center gap-2 mt-2 flex-wrap">
-                          <span className="badge text-bg-light app-compact-badge">Ответов: {requestsHandled}</span>
-                          <span className="badge text-bg-light app-compact-badge">Промпт: {(settings?.custom_prompt || '').trim() ? 'кастом' : 'базовый'}</span>
-                        </div>
-                      </article>
-                    )
-                  })}
-                </section>
-              </div>
-
+              <div className="card-body">{renderSidebarContent(false)}</div>
               <div className="card-footer bg-light small text-muted text-center">Telegram-канал о ремонте бытовой техники в Беларуси</div>
             </div>
           </aside>
 
           <main className="col-12 col-lg-8 col-xl-9" aria-label="Чат мастер-агента">
             <div className="card app-shell-card shadow-sm app-chat-card">
-              <div className="card-header bg-white d-flex align-items-center justify-content-between">
-                <div className="d-flex align-items-center gap-2"><Sparkles size={18} className="text-warning" /><div><h2 className="h6 mb-0">Чат с Мастер-агентом</h2><small className="text-muted">Координатор команды контент-маркетинга</small></div></div>
+              <div className="card-header bg-white d-flex align-items-center justify-content-between gap-2">
+                <div className="d-flex align-items-center gap-2">
+                  <Sparkles size={18} className="text-warning" />
+                  <div>
+                    <h2 className="h6 mb-0">Чат с Мастер-агентом</h2>
+                    <small className="text-muted">Координатор команды контент-маркетинга</small>
+                  </div>
+                </div>
+                <span className={`badge ${apiStatus === 'connected' ? 'text-bg-success' : apiStatus === 'error' ? 'text-bg-danger' : 'text-bg-warning'}`}>{apiStatus === 'connected' ? 'Online' : apiStatus === 'error' ? 'Offline' : 'Checking'}</span>
               </div>
 
               {error && <div className="alert alert-danger rounded-0 mb-0" role="alert"><AlertCircle size={16} className="me-2" />{error}</div>}
@@ -814,6 +927,16 @@ function App() {
         </div>
       </div>
 
+      <div className="offcanvas offcanvas-start d-lg-none" tabIndex={-1} id="mobileControlPanel" aria-labelledby="mobileControlPanelLabel">
+        <div className="offcanvas-header">
+          <h2 className="offcanvas-title fs-6" id="mobileControlPanelLabel">Панель управления</h2>
+          <button type="button" className="btn-close" data-bs-dismiss="offcanvas" aria-label="Закрыть" />
+        </div>
+        <div className="offcanvas-body">
+          {renderSidebarContent(true)}
+        </div>
+      </div>
+
       <div className="modal fade" id="sourcesModal" tabIndex={-1} aria-labelledby="sourcesModalLabel" aria-hidden="true">
         <div className="modal-dialog modal-xl modal-dialog-scrollable">
           <div className="modal-content">
@@ -821,45 +944,83 @@ function App() {
               <h2 className="modal-title fs-5" id="sourcesModalLabel">Управление источниками информации</h2>
               <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Закрыть" />
             </div>
-            <div className="modal-body"><SourcesManager onSourcesChange={loadSourcesCount} /></div>
+            <div className="modal-body p-3 p-md-4">
+              <SourcesManager onSourcesChange={loadSourcesCount} />
+            </div>
           </div>
         </div>
       </div>
 
       <div className="modal fade" id="agentSettingsModal" tabIndex={-1} aria-labelledby="agentSettingsModalLabel" aria-hidden="true">
-        <div className="modal-dialog modal-lg modal-dialog-scrollable">
+        <div className="modal-dialog modal-xl modal-dialog-scrollable">
           <div className="modal-content">
             <div className="modal-header">
-              <h2 className="modal-title fs-5" id="agentSettingsModalLabel">Настройки агента {activeSettingsAgent || ''}</h2>
+              <h2 className="modal-title fs-5" id="agentSettingsModalLabel">Настройка агентов</h2>
               <button type="button" className="btn-close" onClick={closeSettingsModal} aria-label="Закрыть" />
             </div>
             <div className="modal-body">
-              <div className="d-grid gap-3">
-                <div className="d-flex justify-content-between align-items-center border rounded p-2">
-                  <div><div className="fw-semibold">Статус агента</div><small className="text-muted">Отключенный агент не будет выбран Master Agent</small></div>
-                  <button type="button" className={`btn btn-sm ${agentForm.is_active ? 'btn-success' : 'btn-outline-secondary'}`} onClick={() => setAgentForm((prev) => ({ ...prev, is_active: !prev.is_active }))}>{agentForm.is_active ? 'Включен' : 'Выключен'}</button>
+              <div className="row g-3">
+                <div className="col-12 col-md-4">
+                  <div className="list-group app-agent-settings-list" role="tablist" aria-label="Список агентов для настройки">
+                    {settingsAgents.map((agent) => (
+                      <button
+                        key={agent.key}
+                        type="button"
+                        className={`list-group-item list-group-item-action ${activeSettingsAgent === agent.key ? 'active' : ''}`}
+                        onClick={() => openAgentSettings(agent.key)}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <span className={`badge ${AGENT_COLORS[agent.key] || 'text-bg-secondary'} d-inline-flex align-items-center gap-1`}>
+                            {AGENT_ICONS[agent.key] || <Bot size={12} />}
+                          </span>
+                          <div className="text-start">
+                            <div className="fw-semibold small">{agent.label}</div>
+                            <div className="very-small opacity-75">{agent.role}</div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <label htmlFor="agent-custom-prompt" className="form-label">Кастомный промпт</label>
-                  <textarea id="agent-custom-prompt" className="form-control" rows={4} placeholder="Например: всегда предлагай 3 варианта заголовка..." value={agentForm.custom_prompt} onChange={(e) => setAgentForm((prev) => ({ ...prev, custom_prompt: e.target.value }))} />
-                </div>
-                <div>
-                  <label htmlFor="agent-clarifications" className="form-label">Уточнения</label>
-                  <textarea id="agent-clarifications" className="form-control" rows={3} placeholder="Тон, формат, стиль, требования к структуре..." value={agentForm.clarifications} onChange={(e) => setAgentForm((prev) => ({ ...prev, clarifications: e.target.value }))} />
-                </div>
-                <div>
-                  <label htmlFor="agent-goals" className="form-label">Цели</label>
-                  <textarea id="agent-goals" className="form-control" rows={3} placeholder="Что агент должен достигать в каждом ответе..." value={agentForm.goals} onChange={(e) => setAgentForm((prev) => ({ ...prev, goals: e.target.value }))} />
-                </div>
-                <div>
-                  <label htmlFor="agent-constraints" className="form-label">Ограничения</label>
-                  <textarea id="agent-constraints" className="form-control" rows={3} placeholder="Что нельзя делать, какие рамки соблюдать..." value={agentForm.constraints} onChange={(e) => setAgentForm((prev) => ({ ...prev, constraints: e.target.value }))} />
+                <div className="col-12 col-md-8">
+                  <div className="border rounded p-3 p-md-4 d-grid gap-3 app-agent-settings-pane">
+                    <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                      <div>
+                        <div className="fw-semibold">{activeAgentMeta.label}</div>
+                        <small className="text-muted">{activeAgentMeta.role}</small>
+                      </div>
+                      <button type="button" className={`btn btn-sm ${agentForm.is_active ? 'btn-success' : 'btn-outline-secondary'}`} onClick={() => setAgentForm((prev) => ({ ...prev, is_active: !prev.is_active }))}>
+                        {agentForm.is_active ? 'Включен' : 'Выключен'}
+                      </button>
+                    </div>
+                    <div className="alert alert-light border mb-0 py-2 small">
+                      Для каждого агента можно задать свой рабочий промпт и дополнительные инструкции.
+                    </div>
+                    <div>
+                      <label htmlFor="agent-custom-prompt" className="form-label">Кастомный промпт</label>
+                      <textarea id="agent-custom-prompt" className="form-control" rows={5} placeholder="Например: всегда предлагай 3 варианта заголовка..." value={agentForm.custom_prompt} onChange={(e) => setAgentForm((prev) => ({ ...prev, custom_prompt: e.target.value }))} />
+                    </div>
+                    <div className="row g-3">
+                      <div className="col-12 col-lg-6">
+                        <label htmlFor="agent-clarifications" className="form-label">Уточнения</label>
+                        <textarea id="agent-clarifications" className="form-control" rows={3} placeholder="Тон, формат, стиль, требования..." value={agentForm.clarifications} onChange={(e) => setAgentForm((prev) => ({ ...prev, clarifications: e.target.value }))} />
+                      </div>
+                      <div className="col-12 col-lg-6">
+                        <label htmlFor="agent-goals" className="form-label">Цели</label>
+                        <textarea id="agent-goals" className="form-control" rows={3} placeholder="Что агент должен достигать..." value={agentForm.goals} onChange={(e) => setAgentForm((prev) => ({ ...prev, goals: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="agent-constraints" className="form-label">Ограничения</label>
+                      <textarea id="agent-constraints" className="form-control" rows={3} placeholder="Что нельзя делать, какие рамки соблюдать..." value={agentForm.constraints} onChange={(e) => setAgentForm((prev) => ({ ...prev, constraints: e.target.value }))} />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-outline-secondary" onClick={closeSettingsModal}>Отмена</button>
-              <button type="button" className="btn btn-primary" onClick={saveAgentSettings} disabled={isSavingAgent}>
+              <button type="button" className="btn btn-primary" onClick={saveAgentSettings} disabled={isSavingAgent || !activeSettingsAgent}>
                 {isSavingAgent && <Loader2 size={14} className="me-1 app-spin" />}
                 Сохранить
               </button>
