@@ -419,6 +419,7 @@ function App() {
   const [isLoadingModels, setIsLoadingModels] = useState(true)
   const [agentSettings, setAgentSettings] = useState<Record<string, AgentSetting>>({})
   const [activeSettingsAgent, setActiveSettingsAgent] = useState<string | null>(null)
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
   const [agentForm, setAgentForm] = useState({
     custom_prompt: '',
     clarifications: '',
@@ -446,6 +447,17 @@ function App() {
     const serializable = messages.filter((m) => m.id !== 'welcome').map((message) => ({ ...message, timestamp: message.timestamp.toISOString() }))
     localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable))
   }, [messages])
+
+  useEffect(() => {
+    if (!isSettingsModalOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeSettingsModal()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isSettingsModalOpen])
 
   const checkApiStatus = async () => {
     try {
@@ -642,20 +654,21 @@ function App() {
 
   const openSettingsModal = (agentKey: string = 'MASTER_AGENT') => {
     openAgentSettings(agentKey)
-    const element = document.getElementById('agentSettingsModal')
-    if (!element || typeof window === 'undefined') return
-    const bootstrapWindow = (window as any).bootstrap
-    if (!bootstrapWindow?.Modal) return
-    bootstrapWindow.Modal.getOrCreateInstance(element).show()
+    setIsSettingsModalOpen(true)
   }
 
   const closeSettingsModal = () => {
     setActiveSettingsAgent(null)
-    const element = document.getElementById('agentSettingsModal')
-    if (!element || typeof window === 'undefined') return
-    const bootstrapWindow = (window as any).bootstrap
-    if (!bootstrapWindow?.Modal) return
-    bootstrapWindow.Modal.getInstance(element)?.hide()
+    setIsSettingsModalOpen(false)
+  }
+
+  const openSettingsFromMobile = (agentKey: string = 'MASTER_AGENT') => {
+    openAgentSettings(agentKey)
+    const offcanvasCloseButton = document.querySelector<HTMLButtonElement>('#mobileControlPanel .btn-close')
+    if (offcanvasCloseButton) {
+      offcanvasCloseButton.click()
+    }
+    window.setTimeout(() => setIsSettingsModalOpen(true), 180)
   }
 
   const clearHistory = async () => {
@@ -788,7 +801,7 @@ function App() {
                 </div>
                 <div className="d-flex align-items-center gap-1">
                   <span className={`badge ${settings?.is_active === false ? 'text-bg-danger' : 'text-bg-success'}`}>{settings?.is_active === false ? 'off' : 'on'}</span>
-                  <button type="button" className="btn btn-outline-secondary btn-sm app-icon-only-btn" onClick={() => openSettingsModal(agent.key)} aria-label={`Настроить ${agent.label}`} data-bs-dismiss={isMobile ? 'offcanvas' : undefined}>
+                  <button type="button" className="btn btn-outline-secondary btn-sm app-icon-only-btn" onClick={() => (isMobile ? openSettingsFromMobile(agent.key) : openSettingsModal(agent.key))} aria-label={`Настроить ${agent.label}`}>
                     <Settings size={13} />
                   </button>
                 </div>
@@ -951,7 +964,7 @@ function App() {
         </div>
       </div>
 
-      <div className="modal fade" id="agentSettingsModal" tabIndex={-1} aria-labelledby="agentSettingsModalLabel" aria-hidden="true">
+      <div className={`modal ${isSettingsModalOpen ? 'show d-block' : 'd-none'}`} id="agentSettingsModal" tabIndex={-1} aria-labelledby="agentSettingsModalLabel" aria-hidden={!isSettingsModalOpen} role="dialog" aria-modal="true">
         <div className="modal-dialog modal-xl modal-dialog-scrollable">
           <div className="modal-content">
             <div className="modal-header">
@@ -1028,6 +1041,7 @@ function App() {
           </div>
         </div>
       </div>
+      {isSettingsModalOpen && <div className="modal-backdrop fade show" onClick={closeSettingsModal} aria-hidden="true" />}
 
       <Toaster richColors position="top-right" />
     </div>
