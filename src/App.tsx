@@ -14,7 +14,6 @@ import {
   AlertCircle,
   Loader2,
   Settings,
-  Cpu,
   Database,
   Plus,
   Trash2,
@@ -631,11 +630,6 @@ function App() {
     })
   }
 
-  const getCurrentModelName = () => {
-    const model = models.find((m) => m.id === currentModel)
-    return model?.name || currentModel.split('/').pop() || 'AI'
-  }
-
   const AgentBadge = ({ agent }: { agent?: AgentInfo }) => {
     if (!agent) return null
     const badgeClass = AGENT_COLORS[agent.key] || 'text-bg-secondary'
@@ -671,6 +665,14 @@ function App() {
                 <div className="d-flex align-items-center gap-2">
                   <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center app-icon"><Bot size={16} /></div>
                   <div><h1 className="h6 mb-0">Мастер-агент</h1><small className="text-muted">service.by</small></div>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-sm app-icon-only-btn"
+                    onClick={() => openSettingsModal('MASTER_AGENT')}
+                    aria-label="Настройки агентов"
+                  >
+                    <Settings size={14} />
+                  </button>
                   <span className={`badge ms-auto ${apiStatus === 'connected' ? 'text-bg-success' : apiStatus === 'error' ? 'text-bg-danger' : 'text-bg-warning'}`}>{apiStatus === 'connected' ? 'Online' : apiStatus === 'error' ? 'Offline' : 'Checking'}</span>
                 </div>
               </div>
@@ -734,21 +736,10 @@ function App() {
                           </div>
                           <span className={`badge ${settings?.is_active === false ? 'text-bg-danger' : 'text-bg-success'}`}>{settings?.is_active === false ? 'off' : 'on'}</span>
                         </div>
-                        <div className="row g-2 mt-1">
-                          <div className="col-6">
-                            <div className="border rounded p-1 app-mini-stat">
-                              <div className="text-muted very-small">Ответов</div>
-                              <div className="small fw-semibold">{requestsHandled}</div>
-                            </div>
-                          </div>
-                          <div className="col-6">
-                            <div className="border rounded p-1 app-mini-stat">
-                              <div className="text-muted very-small">Промпт</div>
-                              <div className="small fw-semibold">{(settings?.custom_prompt || '').trim() ? 'кастом' : 'базовый'}</div>
-                            </div>
-                          </div>
+                        <div className="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                          <span className="badge text-bg-light app-compact-badge">Ответов: {requestsHandled}</span>
+                          <span className="badge text-bg-light app-compact-badge">Промпт: {(settings?.custom_prompt || '').trim() ? 'кастом' : 'базовый'}</span>
                         </div>
-                        <button type="button" className="btn btn-outline-secondary btn-sm w-100 mt-2" onClick={() => openSettingsModal(agent.key)}><Settings size={14} className="me-1" />Настроить агента</button>
                       </article>
                     )
                   })}
@@ -763,7 +754,6 @@ function App() {
             <div className="card app-shell-card shadow-sm app-chat-card">
               <div className="card-header bg-white d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2"><Sparkles size={18} className="text-warning" /><div><h2 className="h6 mb-0">Чат с Мастер-агентом</h2><small className="text-muted">Координатор команды контент-маркетинга</small></div></div>
-                <span className="badge text-bg-light border"><Cpu size={12} className="me-1" />{getCurrentModelName()}</span>
               </div>
 
               {error && <div className="alert alert-danger rounded-0 mb-0" role="alert"><AlertCircle size={16} className="me-2" />{error}</div>}
@@ -797,13 +787,19 @@ function App() {
               </div>
 
               <div className="card-footer bg-white px-3 px-md-4 py-3">
-                <form className="row g-2 align-items-center" onSubmit={(e) => { e.preventDefault(); handleSend() }}>
-                  <div className="col">
+                <form className="row g-2 align-items-stretch" onSubmit={(e) => { e.preventDefault(); handleSend() }}>
+                  <div className="col-12 col-md">
                     <label htmlFor="chat-input" className="visually-hidden">Сообщение</label>
-                    <input id="chat-input" className="form-control" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Опишите задачу..." disabled={isTyping} />
+                    <input id="chat-input" className="form-control app-chat-input h-100" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Опишите задачу..." disabled={isTyping} />
                   </div>
-                  <div className="col-auto">
-                    <button type="submit" className="btn btn-primary" disabled={!input.trim() || isTyping}>
+                  <div className="col-6 col-md-auto d-grid">
+                    <button type="button" className="btn btn-outline-danger app-chat-action-btn h-100" onClick={clearHistory}>
+                      <Trash2 size={14} className="me-1" />
+                      Очистить историю
+                    </button>
+                  </div>
+                  <div className="col-6 col-md-auto d-grid">
+                    <button type="submit" className="btn btn-primary app-chat-action-btn h-100" disabled={!input.trim() || isTyping}>
                       {isTyping ? <Loader2 size={16} className="me-1 app-spin" /> : <Send size={16} className="me-1" />}
                       Отправить
                     </button>
@@ -811,10 +807,6 @@ function App() {
                 </form>
                 <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
                   <small className="text-muted">Мастер-агент использует {sourcesCount} источник{sourcesCount === 1 ? '' : sourcesCount < 5 ? 'а' : 'ов'}</small>
-                  <div className="d-flex align-items-center gap-2">
-                    <button type="button" className="btn btn-outline-danger btn-sm" onClick={clearHistory}><Trash2 size={14} className="me-1" />Очистить историю</button>
-                    {currentModel && <span className="badge text-bg-light border">{getCurrentModelName()}</span>}
-                  </div>
                 </div>
               </div>
             </div>
