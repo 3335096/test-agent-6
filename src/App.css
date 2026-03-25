@@ -57,6 +57,20 @@ body {
   height: 1.85rem;
 }
 
+.app-agent-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.app-agent-metric-badge {
+  font-size: 0.68rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 999px;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .very-small {
   font-size: 0.69rem;
   line-height: 1.1;
@@ -126,6 +140,24 @@ body {
   margin-bottom: 0;
 }
 
+.app-input-form .form-control,
+.app-input-form .btn {
+  height: 2.75rem;
+}
+
+.app-input-form .btn {
+  min-width: 11.25rem;
+}
+
+.app-settings-icon-btn {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .app-spin {
   animation: app-spin-keyframes 0.9s linear infinite;
 }
@@ -187,5 +219,9 @@ body {
 
   .app-message {
     max-width: 92%;
+  }
+
+  .app-input-form .btn {
+    min-width: 0;
   }
 }
