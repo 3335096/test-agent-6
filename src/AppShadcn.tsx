@@ -477,7 +477,12 @@ function SourcesManager({ onSourcesChange }: { onSourcesChange: () => void }) {
 function AppShadcn() {
   const { resolvedTheme, setTheme } = useTheme()
   const STORAGE_KEY = 'serviceby-chat-history-v1'
+  const SIDEBAR_MODE_KEY = 'serviceby-sidebar-mode-v1'
   const [isThemeReady, setIsThemeReady] = useState(false)
+  const [isSidebarCompact, setIsSidebarCompact] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem(SIDEBAR_MODE_KEY) === 'compact'
+  })
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -540,6 +545,10 @@ function AppShadcn() {
       .map((message) => ({ ...message, timestamp: message.timestamp.toISOString() }))
     localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable))
   }, [messages])
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_MODE_KEY, isSidebarCompact ? 'compact' : 'expanded')
+  }, [isSidebarCompact])
 
   const checkApiStatus = async () => {
     try {
@@ -850,36 +859,33 @@ function AppShadcn() {
     )
   }
 
-  const statusBadgeClass = apiStatus === 'connected'
-    ? 'bg-emerald-600 text-white'
-    : apiStatus === 'error'
-      ? 'bg-red-600 text-white'
-      : 'bg-amber-500 text-amber-950'
   const apiStatusMeta = API_STATUS_META[apiStatus]
+  const statusBadgeClass = cn('border', STATUS_TONE_CLASSES[apiStatusMeta.tone])
+  const isDarkTheme = isThemeReady && resolvedTheme === 'dark'
 
   const toggleTheme = () => {
     const currentTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
     setTheme(currentTheme === 'dark' ? 'light' : 'dark')
   }
 
-  const renderSidebarContent = (isMobile = false) => (
-    <div className="space-y-4">
+  const renderSidebarContent = (isMobile = false, isCompact = false) => (
+    <div className={cn('space-y-4', isCompact && 'space-y-3')}>
       <section className="grid grid-cols-3 gap-2" aria-label="Быстрая статистика">
-        <Card className="gap-1 py-3">
+        <Card className="gap-1 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <CardContent className="px-3 text-center">
             <Users className="mx-auto mb-1 h-4 w-4 text-blue-600" />
             <p className="text-[11px] text-muted-foreground">Агентов</p>
             <p className="text-sm font-semibold">4</p>
           </CardContent>
         </Card>
-        <Card className="gap-1 py-3">
+        <Card className="gap-1 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <CardContent className="px-3 text-center">
             <MessageSquare className="mx-auto mb-1 h-4 w-4 text-violet-600" />
             <p className="text-[11px] text-muted-foreground">Чатов</p>
             <p className="text-sm font-semibold">{messages.length}</p>
           </CardContent>
         </Card>
-        <Card className="gap-1 py-3">
+        <Card className="gap-1 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <CardContent className="px-3 text-center">
             <Target className="mx-auto mb-1 h-4 w-4 text-emerald-600" />
             <p className="text-[11px] text-muted-foreground">Задач</p>
@@ -921,7 +927,7 @@ function AppShadcn() {
           </div>
           <Button type="button" variant="outline" size="sm" onClick={() => (isMobile ? openSourcesFromMobile() : setIsSourcesDialogOpen(true))}>
             <Database className="h-4 w-4" />
-            Управление
+            {!isCompact && 'Управление'}
           </Button>
         </div>
       </section>
@@ -935,7 +941,7 @@ function AppShadcn() {
           const settings = agentSettings[agent.key]
           const requestsHandled = getAgentMessagesCount(agent.key)
           return (
-            <div key={agent.key} className="space-y-2 rounded-lg border p-3">
+            <div key={agent.key} className="space-y-2 rounded-lg border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2">
                   <div className={cn('mt-0.5 flex h-8 w-8 items-center justify-center rounded-md', AGENT_BADGE_CLASSES[agent.key] || 'bg-slate-600 text-white')}>
@@ -943,7 +949,7 @@ function AppShadcn() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold">{agent.label}</p>
-                    <p className="text-xs text-muted-foreground">{agent.actions}</p>
+                    {!isCompact && <p className="text-xs text-muted-foreground">{agent.actions}</p>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -956,8 +962,8 @@ function AppShadcn() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <Badge variant="outline">Ответов: {requestsHandled}</Badge>
-                <Badge variant="outline">Промпт: {(settings?.custom_prompt || '').trim() ? 'кастом' : 'базовый'}</Badge>
+                <Badge variant="outline">{isCompact ? `Ответов ${requestsHandled}` : `Ответов: ${requestsHandled}`}</Badge>
+                {!isCompact && <Badge variant="outline">Промпт: {(settings?.custom_prompt || '').trim() ? 'кастом' : 'базовый'}</Badge>}
               </div>
             </div>
           )
@@ -967,9 +973,9 @@ function AppShadcn() {
   )
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_0%_-10%,#dbeafe_0%,transparent_50%),radial-gradient(circle_at_100%_0%,#ede9fe_0%,transparent_45%)]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_0%_-10%,hsl(var(--brand-primary-100))_0%,transparent_50%),radial-gradient(circle_at_100%_0%,hsl(var(--brand-accent-100))_0%,transparent_45%)] transition-colors duration-500">
       <div className="mx-auto max-w-[1600px] p-3 md:p-4">
-        <Card className="mb-3 lg:hidden">
+        <Card className="mb-3 lg:hidden transition-all duration-300">
           <CardContent className="flex items-center justify-between gap-2 px-4 py-3">
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white">
@@ -986,11 +992,10 @@ function AppShadcn() {
                 Панель
               </Button>
               <Button type="button" variant="outline" size="icon-sm" onClick={toggleTheme} aria-label="Переключить тему">
-                {isThemeReady && resolvedTheme === 'dark' ? (
-                  <Sun className="h-4 w-4" />
-                ) : (
-                  <Moon className="h-4 w-4" />
-                )}
+                <span className="relative block h-4 w-4">
+                  <Sun className={cn('absolute inset-0 h-4 w-4 transition-all duration-300', isDarkTheme ? 'rotate-0 scale-100' : 'rotate-90 scale-0')} />
+                  <Moon className={cn('absolute inset-0 h-4 w-4 transition-all duration-300', isDarkTheme ? '-rotate-90 scale-0' : 'rotate-0 scale-100')} />
+                </span>
               </Button>
               <Button type="button" variant="outline" size="icon-sm" onClick={() => openSettingsModal()} aria-label="Настройки агентов">
                 <Settings className="h-4 w-4" />
@@ -999,9 +1004,12 @@ function AppShadcn() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-3 lg:grid-cols-[330px_1fr] xl:grid-cols-[360px_1fr]">
+        <div className={cn(
+          'grid gap-3 transition-[grid-template-columns] duration-300',
+          isSidebarCompact ? 'lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]' : 'lg:grid-cols-[330px_1fr] xl:grid-cols-[360px_1fr]'
+        )}>
           <aside className="hidden lg:block">
-            <Card className="flex h-[calc(100vh-2rem)] flex-col">
+            <Card className="flex h-[calc(100vh-2rem)] flex-col transition-all duration-300">
               <CardHeader className="border-b pb-4">
                 <div className="flex items-center gap-2">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white">
@@ -1014,18 +1022,20 @@ function AppShadcn() {
                   <Button type="button" variant="outline" size="icon-sm" className="ml-auto" onClick={() => openSettingsModal()} aria-label="Настройки агентов">
                     <Settings className="h-4 w-4" />
                   </Button>
+                  <Button type="button" variant="outline" size="icon-sm" onClick={() => setIsSidebarCompact((prev) => !prev)} aria-label={isSidebarCompact ? 'Расширить сайдбар' : 'Свернуть сайдбар'}>
+                    <PanelLeft className={cn('h-4 w-4 transition-transform duration-300', isSidebarCompact && 'rotate-180')} />
+                  </Button>
                   <Button type="button" variant="outline" size="icon-sm" onClick={toggleTheme} aria-label="Переключить тему">
-                    {isThemeReady && resolvedTheme === 'dark' ? (
-                      <Sun className="h-4 w-4" />
-                    ) : (
-                      <Moon className="h-4 w-4" />
-                    )}
+                    <span className="relative block h-4 w-4">
+                      <Sun className={cn('absolute inset-0 h-4 w-4 transition-all duration-300', isDarkTheme ? 'rotate-0 scale-100' : 'rotate-90 scale-0')} />
+                      <Moon className={cn('absolute inset-0 h-4 w-4 transition-all duration-300', isDarkTheme ? '-rotate-90 scale-0' : 'rotate-0 scale-100')} />
+                    </span>
                   </Button>
                   <Badge className={statusBadgeClass}>{apiStatusMeta.label}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="flex-1 overflow-y-auto pt-4">
-                {renderSidebarContent(false)}
+                {renderSidebarContent(false, isSidebarCompact)}
               </CardContent>
               <CardFooter className="justify-center border-t pt-4 text-center text-xs text-muted-foreground">
                 Telegram-канал о ремонте бытовой техники в Беларуси
@@ -1034,7 +1044,7 @@ function AppShadcn() {
           </aside>
 
           <main>
-            <Card className="flex h-[calc(100vh-1rem)] min-h-[680px] flex-col lg:h-[calc(100vh-2rem)]">
+            <Card className="flex h-[calc(100vh-1rem)] min-h-[680px] flex-col transition-all duration-300 lg:h-[calc(100vh-2rem)]">
               <CardHeader className="border-b pb-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -1069,7 +1079,7 @@ function AppShadcn() {
                     )}
 
                     <div className={cn(
-                      'max-w-[92%] rounded-2xl border px-3 py-2 text-sm shadow-sm md:max-w-[80%]',
+                      'max-w-[92%] rounded-2xl border px-3 py-2 text-sm shadow-sm transition-colors duration-300 md:max-w-[80%]',
                       message.role === 'user'
                         ? 'border-primary bg-primary text-primary-foreground'
                         : 'bg-card text-card-foreground'
