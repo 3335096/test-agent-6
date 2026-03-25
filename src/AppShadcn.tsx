@@ -825,9 +825,9 @@ function AppShadcn() {
     return (
       <Badge className={cn('mb-2 gap-1', AGENT_BADGE_CLASSES[agent.key] || 'bg-slate-500 text-white')}>
         {AGENT_ICONS[agent.key] || <Bot className="h-3.5 w-3.5" />}
-        <span>{agent.name}</span>
+        <span className="text-[0.8125rem] font-medium">{agent.name}</span>
         <span className="opacity-75">·</span>
-        <span>{agent.role}</span>
+        <span className="text-[0.75rem]">{agent.role}</span>
       </Badge>
     )
   }
@@ -844,15 +844,15 @@ function AppShadcn() {
     return (
       <Alert className="mb-2 border bg-muted/40 py-2">
         <AlertDescription className="space-y-1">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Маршрутизация Master Agent</div>
+          <div className="text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Маршрутизация Master Agent</div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground">Выбран агент:</span>
+            <span className="text-[0.75rem] text-muted-foreground">Выбран агент:</span>
             <Badge variant="secondary">{routing.selectedAgentName} ({routing.selectedAgentKey})</Badge>
             <Badge className={confidenceClass}>Уверенность: {confidenceLabel}</Badge>
           </div>
-          <div className="text-xs text-muted-foreground">Причина: {routing.reason}</div>
+          <div className="text-[0.75rem] text-muted-foreground">Причина: {routing.reason}</div>
           {routing.matchedSignals && routing.matchedSignals.length > 0 && (
-            <div className="text-xs text-muted-foreground">Сигналы: {routing.matchedSignals.join(', ')}</div>
+            <div className="text-[0.75rem] text-muted-foreground">Сигналы: {routing.matchedSignals.join(', ')}</div>
           )}
         </AlertDescription>
       </Alert>
@@ -871,25 +871,25 @@ function AppShadcn() {
   const renderSidebarContent = (isMobile = false, isCompact = false) => (
     <div className={cn('space-y-4', isCompact && 'space-y-3')}>
       <section className="grid grid-cols-3 gap-2" aria-label="Быстрая статистика">
-        <Card className="gap-1 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+        <Card className="gap-1 py-3 app-card-hover-interactive">
           <CardContent className="px-3 text-center">
             <Users className="mx-auto mb-1 h-4 w-4 text-blue-600" />
-            <p className="text-[11px] text-muted-foreground">Агентов</p>
-            <p className="text-sm font-semibold">4</p>
+            <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Агентов</p>
+            <p className="text-sm font-semibold md:text-[0.9375rem]">4</p>
           </CardContent>
         </Card>
-        <Card className="gap-1 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+        <Card className="gap-1 py-3 app-card-hover-interactive">
           <CardContent className="px-3 text-center">
             <MessageSquare className="mx-auto mb-1 h-4 w-4 text-violet-600" />
-            <p className="text-[11px] text-muted-foreground">Чатов</p>
-            <p className="text-sm font-semibold">{messages.length}</p>
+            <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Чатов</p>
+            <p className="text-sm font-semibold md:text-[0.9375rem]">{messages.length}</p>
           </CardContent>
         </Card>
-        <Card className="gap-1 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+        <Card className="gap-1 py-3 app-card-hover-interactive">
           <CardContent className="px-3 text-center">
             <Target className="mx-auto mb-1 h-4 w-4 text-emerald-600" />
-            <p className="text-[11px] text-muted-foreground">Задач</p>
-            <p className="text-sm font-semibold">{messages.filter((message) => message.role === 'user').length}</p>
+            <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Задач</p>
+            <p className="text-sm font-semibold md:text-[0.9375rem]">{messages.filter((message) => message.role === 'user').length}</p>
           </CardContent>
         </Card>
       </section>
@@ -920,8 +920,8 @@ function AppShadcn() {
       <section className="space-y-2" aria-label="Источники">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="text-xs uppercase text-muted-foreground">Источники</p>
-            <p className="text-sm">
+            <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Источники</p>
+            <p className="text-sm md:text-[0.9375rem]">
               {sourcesCount === 0 ? 'Нет источников' : `${sourcesCount} источник${sourcesCount === 1 ? '' : sourcesCount < 5 ? 'а' : 'ов'}`}
             </p>
           </div>
@@ -941,15 +941,15 @@ function AppShadcn() {
           const settings = agentSettings[agent.key]
           const requestsHandled = getAgentMessagesCount(agent.key)
           return (
-            <div key={agent.key} className="space-y-2 rounded-lg border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div key={agent.key} className="space-y-2 rounded-lg border p-3 app-card-hover-interactive">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2">
                   <div className={cn('mt-0.5 flex h-8 w-8 items-center justify-center rounded-md', AGENT_BADGE_CLASSES[agent.key] || 'bg-slate-600 text-white')}>
                     {AGENT_ICONS[agent.key]}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">{agent.label}</p>
-                    {!isCompact && <p className="text-xs text-muted-foreground">{agent.actions}</p>}
+                    <p className="text-sm font-semibold md:text-[0.9375rem]">{agent.label}</p>
+                    {!isCompact && <p className="text-[0.75rem] text-muted-foreground md:text-[0.8125rem]">{agent.actions}</p>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -975,7 +975,7 @@ function AppShadcn() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_0%_-10%,hsl(var(--brand-primary-100))_0%,transparent_50%),radial-gradient(circle_at_100%_0%,hsl(var(--brand-accent-100))_0%,transparent_45%)] transition-colors duration-500">
       <div className="mx-auto max-w-[1600px] p-3 md:p-4">
-        <Card className="mb-3 lg:hidden transition-all duration-300">
+        <Card className="mb-3 lg:hidden">
           <CardContent className="flex items-center justify-between gap-2 px-4 py-3">
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white">
@@ -991,10 +991,10 @@ function AppShadcn() {
                 <PanelLeft className="h-4 w-4" />
                 Панель
               </Button>
-              <Button type="button" variant="outline" size="icon-sm" onClick={toggleTheme} aria-label="Переключить тему">
+              <Button type="button" variant="outline" size="icon-sm" className="motion-safe:transition-transform motion-safe:hover:scale-105" onClick={toggleTheme} aria-label="Переключить тему">
                 <span className="relative block h-4 w-4">
-                  <Sun className={cn('absolute inset-0 h-4 w-4 transition-all duration-300', isDarkTheme ? 'rotate-0 scale-100' : 'rotate-90 scale-0')} />
-                  <Moon className={cn('absolute inset-0 h-4 w-4 transition-all duration-300', isDarkTheme ? '-rotate-90 scale-0' : 'rotate-0 scale-100')} />
+                  <Sun className={cn('absolute inset-0 h-4 w-4 motion-safe:transition-all motion-safe:duration-300', isDarkTheme ? 'rotate-0 scale-100' : 'rotate-90 scale-0')} />
+                  <Moon className={cn('absolute inset-0 h-4 w-4 motion-safe:transition-all motion-safe:duration-300', isDarkTheme ? '-rotate-90 scale-0' : 'rotate-0 scale-100')} />
                 </span>
               </Button>
               <Button type="button" variant="outline" size="icon-sm" onClick={() => openSettingsModal()} aria-label="Настройки агентов">
@@ -1005,30 +1005,30 @@ function AppShadcn() {
         </Card>
 
         <div className={cn(
-          'grid gap-3 transition-[grid-template-columns] duration-300',
+          'grid gap-3 motion-safe:transition-[grid-template-columns] motion-safe:duration-300',
           isSidebarCompact ? 'lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]' : 'lg:grid-cols-[330px_1fr] xl:grid-cols-[360px_1fr]'
         )}>
           <aside className="hidden lg:block">
-            <Card className="flex h-[calc(100vh-2rem)] flex-col transition-all duration-300">
+            <Card className="flex h-[calc(100vh-2rem)] flex-col">
               <CardHeader className="border-b pb-4">
                 <div className="flex items-center gap-2">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white">
                     <Bot className="h-4 w-4" />
                   </div>
                   <div>
-                    <CardTitle className="text-base">Мастер-агент</CardTitle>
-                    <p className="text-xs text-muted-foreground">service.by</p>
+                    <CardTitle className="text-base md:text-[1.0625rem]">Мастер-агент</CardTitle>
+                    <p className="text-[0.75rem] text-muted-foreground md:text-[0.8125rem]">service.by</p>
                   </div>
                   <Button type="button" variant="outline" size="icon-sm" className="ml-auto" onClick={() => openSettingsModal()} aria-label="Настройки агентов">
                     <Settings className="h-4 w-4" />
                   </Button>
-                  <Button type="button" variant="outline" size="icon-sm" onClick={() => setIsSidebarCompact((prev) => !prev)} aria-label={isSidebarCompact ? 'Расширить сайдбар' : 'Свернуть сайдбар'}>
-                    <PanelLeft className={cn('h-4 w-4 transition-transform duration-300', isSidebarCompact && 'rotate-180')} />
+                  <Button type="button" variant="outline" size="icon-sm" className="motion-safe:transition-transform motion-safe:hover:scale-105" onClick={() => setIsSidebarCompact((prev) => !prev)} aria-label={isSidebarCompact ? 'Расширить сайдбар' : 'Свернуть сайдбар'}>
+                    <PanelLeft className={cn('h-4 w-4 motion-safe:transition-transform motion-safe:duration-300', isSidebarCompact && 'rotate-180')} />
                   </Button>
-                  <Button type="button" variant="outline" size="icon-sm" onClick={toggleTheme} aria-label="Переключить тему">
+                  <Button type="button" variant="outline" size="icon-sm" className="motion-safe:transition-transform motion-safe:hover:scale-105" onClick={toggleTheme} aria-label="Переключить тему">
                     <span className="relative block h-4 w-4">
-                      <Sun className={cn('absolute inset-0 h-4 w-4 transition-all duration-300', isDarkTheme ? 'rotate-0 scale-100' : 'rotate-90 scale-0')} />
-                      <Moon className={cn('absolute inset-0 h-4 w-4 transition-all duration-300', isDarkTheme ? '-rotate-90 scale-0' : 'rotate-0 scale-100')} />
+                      <Sun className={cn('absolute inset-0 h-4 w-4 motion-safe:transition-all motion-safe:duration-300', isDarkTheme ? 'rotate-0 scale-100' : 'rotate-90 scale-0')} />
+                      <Moon className={cn('absolute inset-0 h-4 w-4 motion-safe:transition-all motion-safe:duration-300', isDarkTheme ? '-rotate-90 scale-0' : 'rotate-0 scale-100')} />
                     </span>
                   </Button>
                   <Badge className={statusBadgeClass}>{apiStatusMeta.label}</Badge>
@@ -1044,14 +1044,14 @@ function AppShadcn() {
           </aside>
 
           <main>
-            <Card className="flex h-[calc(100vh-1rem)] min-h-[680px] flex-col transition-all duration-300 lg:h-[calc(100vh-2rem)]">
+            <Card className="flex h-[calc(100vh-1rem)] min-h-[680px] flex-col lg:h-[calc(100vh-2rem)]">
               <CardHeader className="border-b pb-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-amber-500" />
                     <div>
-                      <CardTitle className="text-base">Чат с Мастер-агентом</CardTitle>
-                      <p className="text-xs text-muted-foreground">Координатор команды контент-маркетинга</p>
+                      <CardTitle className="text-base md:text-[1.0625rem]">Чат с Мастер-агентом</CardTitle>
+                      <p className="text-[0.75rem] text-muted-foreground md:text-[0.8125rem]">Координатор команды контент-маркетинга</p>
                     </div>
                   </div>
                   <Badge className={statusBadgeClass}>{apiStatusMeta.label}</Badge>
@@ -1079,7 +1079,7 @@ function AppShadcn() {
                     )}
 
                     <div className={cn(
-                      'max-w-[92%] rounded-2xl border px-3 py-2 text-sm shadow-sm transition-colors duration-300 md:max-w-[80%]',
+                      'max-w-[92%] rounded-2xl border px-3 py-2 text-sm shadow-sm md:max-w-[80%]',
                       message.role === 'user'
                         ? 'border-primary bg-primary text-primary-foreground'
                         : 'bg-card text-card-foreground'
@@ -1129,7 +1129,7 @@ function AppShadcn() {
                 >
                   <Input
                     id="chat-input"
-                    className="h-10"
+                    className="h-10 text-sm md:text-[0.9375rem]"
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
                     placeholder="Опишите задачу..."

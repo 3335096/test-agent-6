@@ -13,6 +13,14 @@
     box-shadow 180ms ease !important;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .app-theme-transition,
+  .app-theme-transition * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 @keyframes app-spin-keyframes {
   to {
     transform: rotate(360deg);
