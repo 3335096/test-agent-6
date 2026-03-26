@@ -1186,46 +1186,68 @@ function AppShadcn() {
           if (!open) setActiveSettingsAgent(null)
         }}
       >
-        <DialogContent className="max-h-[94vh] w-[96vw] max-w-[1360px] overflow-hidden p-0">
+        <DialogContent className="app-dialog-settings-friendly max-h-[95vh] w-[97vw] max-w-[1500px] overflow-hidden p-0">
           <DialogHeader className="border-b px-6 pt-6 pb-4">
-            <DialogTitle>Настройка агентов</DialogTitle>
-            <DialogDescription>
-              Для каждого агента можно задать свой рабочий промпт и дополнительные инструкции.
+            <DialogTitle className="app-type-heading">Настройка агентов</DialogTitle>
+            <DialogDescription className="app-type-body">
+              Выберите агента слева и настройте его поведение. Форма справа рассчитана на длинные инструкции и удобную редактуру.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid max-h-[78vh] grid-cols-1 gap-4 overflow-y-auto p-4 md:grid-cols-[340px_1fr]">
-            <div className="space-y-2">
-              {settingsAgents.map((agent) => (
-                <button
-                  key={agent.key}
-                  type="button"
-                  className={cn(
-                    'w-full rounded-lg border p-3 text-left transition-colors',
-                    activeSettingsAgent === agent.key ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'
-                  )}
-                  onClick={() => openAgentSettings(agent.key)}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={cn('flex h-7 w-7 items-center justify-center rounded-md', AGENT_BADGE_CLASSES[agent.key] || 'bg-slate-600 text-white')}>
-                      {AGENT_ICONS[agent.key] || <Bot className="h-4 w-4" />}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">{agent.label}</div>
-                      <div className="very-small truncate text-muted-foreground">{agent.role}</div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
+          <div className="grid max-h-[80vh] grid-cols-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[390px_minmax(0,1fr)]">
+            <aside className="space-y-3 lg:sticky lg:top-0 lg:self-start">
+              <div className="rounded-xl border bg-muted/30 p-3">
+                <p className="app-type-title font-semibold">Выберите агента</p>
+                <p className="app-type-caption text-muted-foreground">
+                  Активный агент подсвечивается. Настройки сохраняются индивидуально для каждого.
+                </p>
+              </div>
+              <div className="space-y-2">
+                {settingsAgents.map((agent) => {
+                  const setting = agentSettings[agent.key]
+                  const isSelected = activeSettingsAgent === agent.key
+                  return (
+                    <button
+                      key={agent.key}
+                      type="button"
+                      className={cn(
+                        'app-interactive w-full rounded-xl border p-3.5 text-left',
+                        isSelected
+                          ? 'border-primary bg-primary/10 shadow-sm'
+                          : 'hover:border-primary/35 hover:bg-muted/40'
+                      )}
+                      onClick={() => openAgentSettings(agent.key)}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md', AGENT_BADGE_CLASSES[agent.key] || 'bg-slate-600 text-white')}>
+                          {AGENT_ICONS[agent.key] || <Bot className="h-4 w-4" />}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="app-type-body font-semibold">{agent.label}</span>
+                            <Badge variant={setting?.is_active === false ? 'destructive' : 'secondary'}>
+                              {setting?.is_active === false ? 'off' : 'on'}
+                            </Badge>
+                          </div>
+                          <p className="app-type-caption break-words text-muted-foreground">{agent.role}</p>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </aside>
 
-            <div className="space-y-3 rounded-xl border p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold">{activeAgentMeta.label}</p>
-                  <p className="text-xs text-muted-foreground">{activeAgentMeta.role}</p>
+            <section className="space-y-4 rounded-xl border bg-card p-4 md:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-4">
+                <div className="min-w-0">
+                  <p className="app-type-title font-semibold">{activeAgentMeta.label}</p>
+                  <p className="app-type-caption break-words text-muted-foreground">{activeAgentMeta.role}</p>
+                  <p className="app-type-micro mt-1 text-muted-foreground">
+                    Изменения применяются при следующем ответе выбранного агента.
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-lg border px-3 py-2">
                   <Label htmlFor="agent-active">Активен</Label>
                   <Switch
                     id="agent-active"
@@ -1235,57 +1257,8 @@ function AppShadcn() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="agent-custom-prompt">Кастомный промпт</Label>
-                <Textarea
-                  id="agent-custom-prompt"
-                  rows={8}
-                  className="min-h-[180px] text-sm leading-relaxed"
-                  placeholder="Например: всегда предлагай 3 варианта заголовка..."
-                  value={agentForm.custom_prompt}
-                  onChange={(event) => setAgentForm((prev) => ({ ...prev, custom_prompt: event.target.value }))}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                <div className="space-y-1">
-                  <Label htmlFor="agent-clarifications">Уточнения</Label>
-                  <Textarea
-                    id="agent-clarifications"
-                    rows={5}
-                    className="min-h-[132px] text-sm leading-relaxed"
-                    placeholder="Тон, формат, стиль, требования..."
-                    value={agentForm.clarifications}
-                    onChange={(event) => setAgentForm((prev) => ({ ...prev, clarifications: event.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="agent-goals">Цели</Label>
-                  <Textarea
-                    id="agent-goals"
-                    rows={5}
-                    className="min-h-[132px] text-sm leading-relaxed"
-                    placeholder="Что агент должен достигать..."
-                    value={agentForm.goals}
-                    onChange={(event) => setAgentForm((prev) => ({ ...prev, goals: event.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="agent-constraints">Ограничения</Label>
-                <Textarea
-                  id="agent-constraints"
-                  rows={5}
-                  className="min-h-[132px] text-sm leading-relaxed"
-                  placeholder="Что нельзя делать, какие рамки соблюдать..."
-                  value={agentForm.constraints}
-                  onChange={(event) => setAgentForm((prev) => ({ ...prev, constraints: event.target.value }))}
-                />
-              </div>
-
               {activeSettingsAgent === 'EDITOR' && (
-                <div className="space-y-1">
+                <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
                   <Label htmlFor="editor-post-mode">Режим поста для Telegram</Label>
                   <Select
                     value={agentForm.post_mode}
@@ -1295,21 +1268,70 @@ function AppShadcn() {
                       <SelectValue placeholder="Выберите режим поста" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="short">Короткий пост</SelectItem>
-                      <SelectItem value="long">Развернутый пост</SelectItem>
+                      <SelectItem value="short">Короткий пост (до 700 символов)</SelectItem>
+                      <SelectItem value="long">Развернутый пост (1200–2200 символов)</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="app-type-caption text-muted-foreground">
                     {agentForm.post_mode === 'short'
-                      ? 'Короткий режим: до 700 символов (плотный, лаконичный пост).'
-                      : 'Развернутый режим: ориентир 1200–2200 символов (подробный пост с раскрытием темы).'}
+                      ? 'Короткий режим: плотный, лаконичный пост с быстрым донесением сути.'
+                      : 'Развернутый режим: подробный пост с логичной структурой и более полным раскрытием темы.'}
                   </p>
                 </div>
               )}
-            </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="agent-custom-prompt">Кастомный промпт</Label>
+                <Textarea
+                  id="agent-custom-prompt"
+                  rows={9}
+                  className="min-h-[220px] text-sm leading-relaxed"
+                  placeholder="Например: всегда предлагай 3 варианта заголовка..."
+                  value={agentForm.custom_prompt}
+                  onChange={(event) => setAgentForm((prev) => ({ ...prev, custom_prompt: event.target.value }))}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="agent-clarifications">Уточнения</Label>
+                  <Textarea
+                    id="agent-clarifications"
+                    rows={5}
+                    className="min-h-[150px] text-sm leading-relaxed"
+                    placeholder="Тон, формат, стиль, требования..."
+                    value={agentForm.clarifications}
+                    onChange={(event) => setAgentForm((prev) => ({ ...prev, clarifications: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="agent-goals">Цели</Label>
+                  <Textarea
+                    id="agent-goals"
+                    rows={5}
+                    className="min-h-[150px] text-sm leading-relaxed"
+                    placeholder="Что агент должен достигать..."
+                    value={agentForm.goals}
+                    onChange={(event) => setAgentForm((prev) => ({ ...prev, goals: event.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="agent-constraints">Ограничения</Label>
+                <Textarea
+                  id="agent-constraints"
+                  rows={5}
+                  className="min-h-[150px] text-sm leading-relaxed"
+                  placeholder="Что нельзя делать, какие рамки соблюдать..."
+                  value={agentForm.constraints}
+                  onChange={(event) => setAgentForm((prev) => ({ ...prev, constraints: event.target.value }))}
+                />
+              </div>
+            </section>
           </div>
 
-          <DialogFooter className="border-t px-6 py-4">
+          <DialogFooter className="border-t bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/85">
             <Button type="button" variant="outline" onClick={closeSettingsModal}>Отмена</Button>
             <Button type="button" onClick={saveAgentSettings} disabled={isSavingAgent || !activeSettingsAgent}>
               {isSavingAgent && <Loader2 className="h-4 w-4 animate-spin" />}
