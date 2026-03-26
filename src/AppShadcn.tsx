@@ -1168,7 +1168,7 @@ function AppShadcn() {
       </Sheet>
 
       <Dialog open={isSourcesDialogOpen} onOpenChange={setIsSourcesDialogOpen}>
-        <DialogContent className="max-h-[94vh] w-[96vw] max-w-[1200px] overflow-hidden p-0">
+        <DialogContent className="max-h-[94vh] w-[96vw] sm:!max-w-[96vw] xl:!max-w-[1200px] overflow-hidden p-0">
           <DialogHeader className="border-b px-6 pt-6 pb-4">
             <DialogTitle>Управление источниками информации</DialogTitle>
             <DialogDescription>Добавляйте, редактируйте и отключайте источники контента.</DialogDescription>
@@ -1186,7 +1186,7 @@ function AppShadcn() {
           if (!open) setActiveSettingsAgent(null)
         }}
       >
-        <DialogContent className="app-dialog-settings-friendly max-h-[95vh] w-[97vw] max-w-[1500px] overflow-hidden p-0">
+        <DialogContent className="app-dialog-settings-friendly max-h-[95vh] w-[97vw] sm:!max-w-[97vw] 2xl:!max-w-[1500px] overflow-hidden p-0">
           <DialogHeader className="border-b px-6 pt-6 pb-4">
             <DialogTitle className="app-type-heading">Настройка агентов</DialogTitle>
             <DialogDescription className="app-type-body">
@@ -1238,7 +1238,7 @@ function AppShadcn() {
               </div>
             </aside>
 
-            <section className="app-settings-main space-y-4 rounded-xl border bg-card p-4 md:p-5">
+            <section className="app-settings-main min-w-0 space-y-4 rounded-xl border bg-card p-4 md:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-4">
                 <div className="min-w-0">
                   <p className="app-type-title font-semibold">{activeAgentMeta.label}</p>
