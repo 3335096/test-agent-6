@@ -1168,12 +1168,12 @@ function AppShadcn() {
       </Sheet>
 
       <Dialog open={isSourcesDialogOpen} onOpenChange={setIsSourcesDialogOpen}>
-        <DialogContent className="max-h-[92vh] max-w-5xl overflow-hidden p-0">
+        <DialogContent className="max-h-[94vh] w-[96vw] max-w-[1200px] overflow-hidden p-0">
           <DialogHeader className="border-b px-6 pt-6 pb-4">
             <DialogTitle>Управление источниками информации</DialogTitle>
             <DialogDescription>Добавляйте, редактируйте и отключайте источники контента.</DialogDescription>
           </DialogHeader>
-          <div className="max-h-[75vh] overflow-y-auto px-6 py-4">
+          <div className="max-h-[78vh] overflow-y-auto px-6 py-4">
             <SourcesManager onSourcesChange={loadSourcesCount} />
           </div>
         </DialogContent>
@@ -1186,7 +1186,7 @@ function AppShadcn() {
           if (!open) setActiveSettingsAgent(null)
         }}
       >
-        <DialogContent className="max-h-[92vh] max-w-6xl overflow-hidden p-0">
+        <DialogContent className="max-h-[94vh] w-[96vw] max-w-[1360px] overflow-hidden p-0">
           <DialogHeader className="border-b px-6 pt-6 pb-4">
             <DialogTitle>Настройка агентов</DialogTitle>
             <DialogDescription>
@@ -1194,7 +1194,7 @@ function AppShadcn() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid max-h-[72vh] grid-cols-1 gap-3 overflow-y-auto p-4 md:grid-cols-[300px_1fr]">
+          <div className="grid max-h-[78vh] grid-cols-1 gap-4 overflow-y-auto p-4 md:grid-cols-[340px_1fr]">
             <div className="space-y-2">
               {settingsAgents.map((agent) => (
                 <button
@@ -1239,7 +1239,8 @@ function AppShadcn() {
                 <Label htmlFor="agent-custom-prompt">Кастомный промпт</Label>
                 <Textarea
                   id="agent-custom-prompt"
-                  rows={5}
+                  rows={8}
+                  className="min-h-[180px] text-sm leading-relaxed"
                   placeholder="Например: всегда предлагай 3 варианта заголовка..."
                   value={agentForm.custom_prompt}
                   onChange={(event) => setAgentForm((prev) => ({ ...prev, custom_prompt: event.target.value }))}
@@ -1251,7 +1252,8 @@ function AppShadcn() {
                   <Label htmlFor="agent-clarifications">Уточнения</Label>
                   <Textarea
                     id="agent-clarifications"
-                    rows={3}
+                    rows={5}
+                    className="min-h-[132px] text-sm leading-relaxed"
                     placeholder="Тон, формат, стиль, требования..."
                     value={agentForm.clarifications}
                     onChange={(event) => setAgentForm((prev) => ({ ...prev, clarifications: event.target.value }))}
@@ -1261,7 +1263,8 @@ function AppShadcn() {
                   <Label htmlFor="agent-goals">Цели</Label>
                   <Textarea
                     id="agent-goals"
-                    rows={3}
+                    rows={5}
+                    className="min-h-[132px] text-sm leading-relaxed"
                     placeholder="Что агент должен достигать..."
                     value={agentForm.goals}
                     onChange={(event) => setAgentForm((prev) => ({ ...prev, goals: event.target.value }))}
@@ -1273,7 +1276,8 @@ function AppShadcn() {
                 <Label htmlFor="agent-constraints">Ограничения</Label>
                 <Textarea
                   id="agent-constraints"
-                  rows={3}
+                  rows={5}
+                  className="min-h-[132px] text-sm leading-relaxed"
                   placeholder="Что нельзя делать, какие рамки соблюдать..."
                   value={agentForm.constraints}
                   onChange={(event) => setAgentForm((prev) => ({ ...prev, constraints: event.target.value }))}
@@ -1297,8 +1301,8 @@ function AppShadcn() {
                   </Select>
                   <p className="text-xs text-muted-foreground">
                     {agentForm.post_mode === 'short'
-                      ? 'Короткий режим: компактный Telegram-пост без лишних деталей.'
-                      : 'Развернутый режим: более подробный Telegram-пост с расширенной аргументацией.'}
+                      ? 'Короткий режим: до 700 символов (плотный, лаконичный пост).'
+                      : 'Развернутый режим: ориентир 1200–2200 символов (подробный пост с раскрытием темы).'}
                   </p>
                 </div>
               )}

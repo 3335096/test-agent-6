@@ -26,3 +26,15 @@
     transform: rotate(360deg);
   }
 }
+
+@media (min-width: 1024px) {
+  .app-dialog-sources {
+    width: min(96vw, 1320px) !important;
+    max-width: min(96vw, 1320px) !important;
+  }
+
+  .app-dialog-settings {
+    width: min(96vw, 1460px) !important;
+    max-width: min(96vw, 1460px) !important;
+  }
+}
