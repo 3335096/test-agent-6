@@ -99,6 +99,7 @@ interface AgentSetting {
   clarifications: string
   goals: string
   constraints: string
+  post_mode?: 'short' | 'long'
   is_active: boolean
   updated_at?: string
 }
@@ -517,6 +518,7 @@ function AppShadcn() {
     clarifications: '',
     goals: '',
     constraints: '',
+    post_mode: 'long' as 'short' | 'long',
     is_active: true
   })
   const [isSavingAgent, setIsSavingAgent] = useState(false)
@@ -724,6 +726,7 @@ function AppShadcn() {
       clarifications: current?.clarifications || '',
       goals: current?.goals || '',
       constraints: current?.constraints || '',
+      post_mode: current?.post_mode === 'short' ? 'short' : 'long',
       is_active: current?.is_active ?? true
     })
   }
@@ -1276,6 +1279,29 @@ function AppShadcn() {
                   onChange={(event) => setAgentForm((prev) => ({ ...prev, constraints: event.target.value }))}
                 />
               </div>
+
+              {activeSettingsAgent === 'EDITOR' && (
+                <div className="space-y-1">
+                  <Label htmlFor="editor-post-mode">Режим поста для Telegram</Label>
+                  <Select
+                    value={agentForm.post_mode}
+                    onValueChange={(value: 'short' | 'long') => setAgentForm((prev) => ({ ...prev, post_mode: value }))}
+                  >
+                    <SelectTrigger id="editor-post-mode" className="w-full">
+                      <SelectValue placeholder="Выберите режим поста" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="short">Короткий пост</SelectItem>
+                      <SelectItem value="long">Развернутый пост</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {agentForm.post_mode === 'short'
+                      ? 'Короткий режим: компактный Telegram-пост без лишних деталей.'
+                      : 'Развернутый режим: более подробный Telegram-пост с расширенной аргументацией.'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
