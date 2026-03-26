@@ -1194,8 +1194,8 @@ function AppShadcn() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid max-h-[80vh] grid-cols-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[390px_minmax(0,1fr)]">
-            <aside className="space-y-3 lg:sticky lg:top-0 lg:self-start">
+          <div className="app-settings-layout grid max-h-[80vh] grid-cols-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[clamp(300px,28vw,380px)_minmax(0,1fr)]">
+            <aside className="app-settings-sidebar space-y-3 xl:sticky xl:top-0 xl:self-start">
               <div className="rounded-xl border bg-muted/30 p-3">
                 <p className="app-type-title font-semibold">Выберите агента</p>
                 <p className="app-type-caption text-muted-foreground">
@@ -1211,7 +1211,7 @@ function AppShadcn() {
                       key={agent.key}
                       type="button"
                       className={cn(
-                        'app-interactive w-full rounded-xl border p-3.5 text-left',
+                        'app-interactive app-settings-agent-item w-full rounded-xl border p-3.5 text-left',
                         isSelected
                           ? 'border-primary bg-primary/10 shadow-sm'
                           : 'hover:border-primary/35 hover:bg-muted/40'
@@ -1238,7 +1238,7 @@ function AppShadcn() {
               </div>
             </aside>
 
-            <section className="space-y-4 rounded-xl border bg-card p-4 md:p-5">
+            <section className="app-settings-main space-y-4 rounded-xl border bg-card p-4 md:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-4">
                 <div className="min-w-0">
                   <p className="app-type-title font-semibold">{activeAgentMeta.label}</p>
