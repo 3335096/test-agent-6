@@ -114,7 +114,8 @@ function getSystemPrompt() {
         `  • custom_prompt: ${setting.custom_prompt || 'не задан'}`,
         `  • clarifications: ${setting.clarifications || 'не заданы'}`,
         `  • goals: ${setting.goals || 'не заданы'}`,
-        `  • constraints: ${setting.constraints || 'не заданы'}`
+        `  • constraints: ${setting.constraints || 'не заданы'}`,
+        `  • post_mode: ${setting.post_mode || 'long'}`
       ].join('\n');
     })
     .join('\n');
@@ -160,6 +161,30 @@ ${sourcesContext}
 ПОЛЬЗОВАТЕЛЬСКИЕ НАСТРОЙКИ АГЕНТОВ
 ═══════════════════════════════════════════════════════════════
 ${agentsPromptBlock}
+
+═══════════════════════════════════════════════════════════════
+СТАНДАРТ ВЫДАЧИ ДЛЯ EDITOR (TELEGRAM-READY)
+═══════════════════════════════════════════════════════════════
+
+Если выбран агент EDITOR, итог должен быть СРАЗУ готов к публикации в Telegram.
+
+Требования:
+1) Выдавай финальный вариант как цельный, аккуратно структурированный пост,
+   который можно скопировать одним действием и сразу отправить в канал.
+2) Не добавляй служебные комментарии, мета-описания, технические пояснения,
+   JSON, markdown-таблицы, код-блоки и фразы вроде «вариант поста ниже».
+3) Сохраняй читаемую структуру для Telegram:
+   - цепляющий заголовок/первая строка,
+   - основной текст с короткими абзацами,
+   - при необходимости список пунктов,
+   - короткий CTA в конце.
+4) Хэштеги, эмодзи и форматирование используй умеренно и уместно,
+   без визуального шума.
+5) Если пользователь просит несколько вариантов — каждый вариант давай
+   как отдельный, полностью готовый к публикации Telegram-пост.
+6) Для EDITOR учитывай настройку post_mode:
+   - short: короткий пост (обычно 3–5 коротких абзацев, фокус на сути)
+   - long: развернутый пост (обычно 6–10 абзацев, с более полным раскрытием темы)
 
 ═══════════════════════════════════════════════════════════════
 ВАЖНО: ФОРМАТ ОТВЕТА
@@ -494,6 +519,7 @@ app.get('/api/agents/:agentKey/settings', (req, res) => {
       clarifications: '',
       goals: '',
       constraints: '',
+      post_mode: 'long',
       is_active: true
     };
     res.json({ setting });
@@ -510,12 +536,14 @@ app.put('/api/agents/:agentKey/settings', (req, res) => {
       return res.status(404).json({ error: 'Agent not found' });
     }
 
-    const { custom_prompt, clarifications, goals, constraints, is_active } = req.body || {};
+    const { custom_prompt, clarifications, goals, constraints, post_mode, is_active } = req.body || {};
+    const normalizedPostMode = post_mode === 'short' ? 'short' : 'long';
     const setting = db.upsertAgentSetting(agentKey, {
       custom_prompt: custom_prompt ?? '',
       clarifications: clarifications ?? '',
       goals: goals ?? '',
       constraints: constraints ?? '',
+      post_mode: normalizedPostMode,
       is_active: is_active ?? true
     });
     res.json({ success: true, setting });

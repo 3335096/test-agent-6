@@ -60,10 +60,17 @@ function initDatabase() {
       clarifications TEXT DEFAULT '',
       goals TEXT DEFAULT '',
       constraints TEXT DEFAULT '',
+      post_mode TEXT DEFAULT 'short',
       is_active INTEGER DEFAULT 1,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  // Миграция для существующих БД: добавляем post_mode при обновлении.
+  try {
+    db.exec(`ALTER TABLE agent_settings ADD COLUMN post_mode TEXT DEFAULT 'short'`);
+  } catch (e) {
+    // Игнорируем ошибку "duplicate column name" на уже обновлённых БД.
+  }
 
   // Таблица истории чата
   db.exec(`
@@ -106,13 +113,14 @@ function upsertAgentSetting(agentKey, payload = {}) {
     clarifications: payload.clarifications ?? existing?.clarifications ?? '',
     goals: payload.goals ?? existing?.goals ?? '',
     constraints: payload.constraints ?? existing?.constraints ?? '',
+    post_mode: payload.post_mode ?? existing?.post_mode ?? 'short',
     is_active: payload.is_active ?? existing?.is_active ?? true
   };
 
   if (existing) {
     const stmt = db.prepare(`
       UPDATE agent_settings
-      SET custom_prompt = ?, clarifications = ?, goals = ?, constraints = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+      SET custom_prompt = ?, clarifications = ?, goals = ?, constraints = ?, post_mode = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
       WHERE agent_key = ?
     `);
     stmt.run(
@@ -120,13 +128,14 @@ function upsertAgentSetting(agentKey, payload = {}) {
       merged.clarifications,
       merged.goals,
       merged.constraints,
+      merged.post_mode,
       merged.is_active ? 1 : 0,
       agentKey
     );
   } else {
     const stmt = db.prepare(`
-      INSERT INTO agent_settings (agent_key, custom_prompt, clarifications, goals, constraints, is_active)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO agent_settings (agent_key, custom_prompt, clarifications, goals, constraints, post_mode, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
       agentKey,
@@ -134,6 +143,7 @@ function upsertAgentSetting(agentKey, payload = {}) {
       merged.clarifications,
       merged.goals,
       merged.constraints,
+      merged.post_mode,
       merged.is_active ? 1 : 0
     );
   }
